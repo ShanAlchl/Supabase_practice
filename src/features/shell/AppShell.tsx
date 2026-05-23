@@ -10,12 +10,12 @@ import {
   UserCog,
   UsersRound,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
 import type { Circle, CircleMember, Profile, SessionUser } from '../../types/domain'
 import { supabase } from '../../lib/supabase'
 import { Avatar } from '../../components/ui/Avatar'
-import { AvatarGroup } from '../../components/ui/AvatarGroup'
+
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -40,6 +40,7 @@ type AppShellProps = {
   onOpenNotifications?: () => void
   onOpenSettings?: () => void
   onOpenProfile?: () => void
+  onOpenMembers?: () => void
   notificationCount?: number
   rightRailTools?: ReactNode
   children: ReactNode
@@ -64,13 +65,12 @@ export function AppShell({
   onOpenNotifications,
   onOpenSettings,
   onOpenProfile,
+  onOpenMembers,
   notificationCount = 0,
   rightRailTools,
   children,
 }: AppShellProps) {
   const [activePanel, setActivePanel] = useState<PanelKey>('feed')
-  const memberProfiles = useMemo(() => members.map((member) => member.profile), [members])
-
   const signOut = () => {
     supabase?.auth.signOut()
   }
@@ -82,6 +82,10 @@ export function AppShell({
     }
 
     setActivePanel(panel)
+    if (panel === 'members') {
+      onOpenMembers?.()
+      return
+    }
     if (panel === 'notifications') {
       onOpenNotifications?.()
       return
@@ -109,7 +113,6 @@ export function AppShell({
           activePanel={activePanel}
           circle={circle}
           isDemo={isDemo}
-          members={memberProfiles}
           notificationCount={notificationCount}
           onCompose={onCompose}
           onMove={moveToPanel}
@@ -124,12 +127,10 @@ export function AppShell({
         </main>
 
         <RightRail
-          activePanel={activePanel}
           circle={circle}
           isDemo={isDemo}
           members={members}
           notificationCount={notificationCount}
-          onCompose={onCompose}
           onOpenInvites={onOpenInvites}
           onOpenNotifications={onOpenNotifications}
           onOpenSettings={onOpenSettings}
@@ -177,7 +178,6 @@ function LeftRail({
   activePanel,
   circle,
   isDemo,
-  members,
   notificationCount,
   onCompose,
   onMove,
@@ -189,7 +189,6 @@ function LeftRail({
   activePanel: PanelKey
   circle: Circle
   isDemo: boolean
-  members: Profile[]
   notificationCount: number
   onCompose: () => void
   onMove: (panel: PanelKey, disabled?: boolean) => void
@@ -211,15 +210,6 @@ function LeftRail({
                 </h1>
               </div>
               {isDemo ? <Badge tone="warning">Demo</Badge> : null}
-            </div>
-            <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-semibold text-[var(--color-muted)]">圈子成员</span>
-                <span className="text-xs font-semibold text-[var(--color-primary)]">
-                  {members.length} 人
-                </span>
-              </div>
-              <AvatarGroup people={members} />
             </div>
           </div>
 
@@ -293,23 +283,19 @@ function LeftRail({
 }
 
 function RightRail({
-  activePanel,
   circle,
   isDemo,
   members,
   notificationCount,
-  onCompose,
   onOpenInvites,
   onOpenNotifications,
   onOpenSettings,
   tools,
 }: {
-  activePanel: PanelKey
   circle: Circle
   isDemo: boolean
   members: CircleMember[]
   notificationCount: number
-  onCompose: () => void
   onOpenInvites?: () => void
   onOpenNotifications?: () => void
   onOpenSettings?: () => void
@@ -327,47 +313,10 @@ function RightRail({
           </div>
           {isDemo ? <Badge tone="warning">Demo</Badge> : <Badge tone="success">私密</Badge>}
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button onClick={onCompose} variant="primary">
-            <Plus size={18} />
-            写近况
-          </Button>
-          <Button disabled={isDemo} onClick={onOpenSettings} variant="subtle">
-            <Settings size={18} />
-            设置
-          </Button>
-        </div>
-      </Card>
-
-      <Card
-        className={`p-5 transition-all duration-300 ${
-          activePanel === 'members'
-            ? 'border-[var(--color-primary)] shadow-[0_0_0_3px_rgba(45,106,79,0.12)]'
-            : ''
-        }`}
-        id="members"
-      >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="font-semibold">成员</h2>
-          <Badge tone="neutral">{members.length} 人</Badge>
-        </div>
-        <div className="space-y-3">
-          {members.map((member) => (
-            <div className="flex items-center gap-3" key={member.userId}>
-              <Avatar
-                name={member.profile.displayName}
-                size="sm"
-                src={member.profile.avatarUrl}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{member.profile.displayName}</p>
-                <p className="text-xs text-[var(--color-muted)]">
-                  {member.role === 'owner' ? '圈主' : '成员'}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <Button disabled={isDemo} fullWidth onClick={onOpenSettings} variant="subtle">
+          <Settings size={18} />
+          设置
+        </Button>
       </Card>
 
       <Card className="p-5">

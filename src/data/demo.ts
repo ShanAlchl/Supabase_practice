@@ -65,6 +65,7 @@ export const demoPosts: Post[] = [
         id: 'comment-1',
         postId: 'post-1',
         authorId: 'chen',
+        parentId: null,
         body: '下次散步叫我，我负责买饮料。',
         createdAt: new Date(Date.now() - 1000 * 60 * 8).toISOString(),
         author: demoMembers[2].profile,
@@ -73,6 +74,7 @@ export const demoPosts: Post[] = [
     commentCount: 1,
     reactionCount: 4,
     viewerHasReacted: true,
+    pinnedAt: null,
   },
   {
     id: 'post-2',
@@ -101,5 +103,6 @@ export const demoPosts: Post[] = [
     commentCount: 0,
     reactionCount: 7,
     viewerHasReacted: false,
+    pinnedAt: null,
   },
 ]

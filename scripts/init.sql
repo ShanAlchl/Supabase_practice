@@ -33,6 +33,7 @@ create table if not exists public.posts (
   circle_id uuid not null references public.circles(id) on delete cascade,
   author_id uuid not null references public.profiles(id) on delete cascade,
   body text not null check (char_length(body) <= 800),
+  pinned_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -51,6 +52,7 @@ create table if not exists public.comments (
   post_id uuid not null references public.posts(id) on delete cascade,
   circle_id uuid not null references public.circles(id) on delete cascade,
   author_id uuid not null references public.profiles(id) on delete cascade,
+  parent_id uuid references public.comments(id) on delete cascade,
   body text not null check (char_length(body) <= 400),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -106,11 +108,17 @@ create index if not exists posts_circle_created_idx
 create index if not exists posts_author_id_idx
   on public.posts(author_id);
 
+create index if not exists posts_pinned_idx
+  on public.posts(circle_id, pinned_at desc nulls last);
+
 create index if not exists post_images_post_sort_idx
   on public.post_images(post_id, sort_order);
 
 create index if not exists comments_post_created_idx
   on public.comments(post_id, created_at desc, id desc);
+
+create index if not exists comments_parent_idx
+  on public.comments(parent_id) where parent_id is not null;
 
 create index if not exists comments_circle_created_idx
   on public.comments(circle_id, created_at desc);
@@ -380,7 +388,7 @@ as $$
     (
       select count(*)
       from public.comments c
-      where c.post_id = p.id
+      where c.post_id = p.id and c.parent_id is null
     ) as comment_count,
     (
       select count(*)
@@ -402,11 +410,41 @@ as $$
       or before_id is null
       or (p.created_at, p.id) < (before_created_at, before_id)
     )
-  order by p.created_at desc, p.id desc
+  order by
+    case when p.pinned_at is not null then 0 else 1 end,
+    p.pinned_at asc nulls last,
+    p.created_at desc, p.id desc
   limit least(greatest(coalesce(page_size, 20), 1), 50);
 $$;
 
 grant execute on function public.get_feed_posts(uuid, timestamptz, uuid, int) to authenticated;
+
+create or replace function public.toggle_pin_post(
+  target_post_id uuid,
+  target_circle_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from public.circle_members
+    where circle_id = target_circle_id
+      and user_id = (select auth.uid())
+      and role = 'owner'
+  ) then
+    raise exception 'Only circle owner can pin posts.';
+  end if;
+
+  update public.posts
+  set pinned_at = case when pinned_at is not null then null else now() end
+  where id = target_post_id and circle_id = target_circle_id;
+end;
+$$;
+
+grant execute on function public.toggle_pin_post(uuid, uuid) to authenticated;
 
 create or replace function public.search_circle_posts(
   target_circle_id uuid,

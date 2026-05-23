@@ -37,6 +37,7 @@ type FeedPostRow = {
   body: string
   created_at: string
   updated_at: string
+  pinned_at: string | null
   author: ProfileRow
   images: ImageRow[] | string | null
   comment_count: number
@@ -94,6 +95,7 @@ const toPost = async (row: FeedPostRow): Promise<Post> => ({
   authorId: row.author_id,
   body: row.body,
   createdAt: row.created_at,
+  pinnedAt: row.pinned_at,
   author: await toProfile(row.author),
   images: await Promise.all(parseImages(row.images).map(toImage)),
   comments: [],
@@ -272,6 +274,21 @@ export const deletePost = async (postId: string) => {
       }`,
       { cause: error },
     )
+  }
+}
+
+export const togglePinPost = async (postId: string, circleId: string) => {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.')
+  }
+
+  const { error } = await supabase.rpc('toggle_pin_post', {
+    target_post_id: postId,
+    target_circle_id: circleId,
+  })
+
+  if (error) {
+    throw error
   }
 }
 

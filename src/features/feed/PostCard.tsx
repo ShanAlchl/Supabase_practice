@@ -1,6 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Heart, Loader2, MessageCircle, Send, Trash2 } from 'lucide-react'
+import {
+  CornerDownRight,
+  Heart,
+  Loader2,
+  MessageCircle,
+  Pin,
+  Send,
+  Trash2,
+} from 'lucide-react'
 import type { Comment, Post } from '../../types/domain'
 import { Avatar } from '../../components/ui/Avatar'
 import { Button } from '../../components/ui/Button'
@@ -10,11 +18,14 @@ import { formatRelativeTime } from '../../utils/time'
 
 type PostCardProps = {
   post: Post
+  viewerId?: string
   onToggleReaction: (post: Post) => void
-  onAddComment: (post: Post, body: string) => Promise<void> | void
+  onAddComment: (post: Post, body: string, parentId?: string) => Promise<void> | void
   onLoadComments?: (post: Post) => Promise<Comment[]>
   canDelete?: boolean
   onDelete?: (post: Post) => Promise<void> | void
+  canPin?: boolean
+  onTogglePin?: (post: Post) => Promise<void> | void
 }
 
 export function PostCard({
@@ -24,6 +35,8 @@ export function PostCard({
   onLoadComments,
   canDelete = false,
   onDelete,
+  canPin = false,
+  onTogglePin,
 }: PostCardProps) {
   const [comment, setComment] = useState('')
   const [commenting, setCommenting] = useState(false)
@@ -31,10 +44,33 @@ export function PostCard({
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [loadingComments, setLoadingComments] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [pinning, setPinning] = useState(false)
   const [heartBurst, setHeartBurst] = useState(false)
+  const [replyTo, setReplyTo] = useState<string | null>(null)
+  const [replyBody, setReplyBody] = useState('')
+  const [replying, setReplying] = useState(false)
+
   const commentCount = post.commentCount ?? post.comments.length
   const comments = loadedComments ?? post.comments
   const shouldShowComments = commentsOpen || post.comments.length > 0
+
+  const { topLevel, replyMap } = useMemo(() => {
+    const map = new Map<string, Comment[]>()
+    const top: Comment[] = []
+    for (const c of comments) {
+      if (!c.parentId) {
+        top.push(c)
+      } else {
+        const list = map.get(c.parentId) ?? []
+        list.push(c)
+        map.set(c.parentId, list)
+      }
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    }
+    return { topLevel: top, replyMap: map }
+  }, [comments])
 
   useEffect(() => {
     if (!post.viewerHasReacted) {
@@ -83,6 +119,26 @@ export function PostCard({
     }
   }
 
+  const handleReply = async (parentId: string) => {
+    if (!replyBody.trim() || replying) {
+      return
+    }
+
+    setReplying(true)
+    try {
+      await onAddComment(post, replyBody, parentId)
+      setReplyBody('')
+      setReplyTo(null)
+      if (onLoadComments) {
+        const loaded = await onLoadComments(post)
+        setLoadedComments(loaded)
+        setCommentsOpen(true)
+      }
+    } finally {
+      setReplying(false)
+    }
+  }
+
   const handleDelete = async () => {
     if (!onDelete || deleting) {
       return
@@ -101,8 +157,35 @@ export function PostCard({
     }
   }
 
+  const handleTogglePin = async () => {
+    if (!onTogglePin || pinning) {
+      return
+    }
+
+    setPinning(true)
+    try {
+      await onTogglePin(post)
+    } finally {
+      setPinning(false)
+    }
+  }
+
+  const isPinned = Boolean(post.pinnedAt)
+
   return (
-    <Card as="article" className="group overflow-hidden p-5 transition-all duration-300 hover:shadow-[var(--shadow-elevated)] hover:-translate-y-0.5 sm:p-6">
+    <Card
+      as="article"
+      className={`group overflow-hidden p-5 transition-all duration-300 hover:shadow-[var(--shadow-elevated)] hover:-translate-y-0.5 sm:p-6 ${
+        isPinned ? 'border-l-4 border-l-[var(--color-primary)]' : ''
+      }`}
+    >
+      {isPinned ? (
+        <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primary)]">
+          <Pin size={14} />
+          置顶动态
+        </div>
+      ) : null}
+
       <header className="flex items-start gap-3.5">
         <Avatar name={post.author.displayName} size="lg" src={post.author.avatarUrl} />
         <div className="min-w-0 flex-1 pt-0.5">
@@ -115,8 +198,23 @@ export function PostCard({
             </span>
           </div>
         </div>
-        {canDelete ? (
-          <div className="opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          {canPin ? (
+            <Button
+              aria-label={isPinned ? '取消置顶' : '置顶'}
+              disabled={pinning}
+              onClick={handleTogglePin}
+              size="icon"
+              variant="ghost"
+            >
+              {pinning ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <Pin size={16} className={isPinned ? 'text-[var(--color-primary)]' : ''} />
+              )}
+            </Button>
+          ) : null}
+          {canDelete ? (
             <Button
               aria-label="删除动态"
               disabled={deleting}
@@ -126,8 +224,8 @@ export function PostCard({
             >
               {deleting ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
             </Button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </header>
 
       <p className="mt-5 whitespace-pre-wrap break-words text-[15px] leading-8 text-[var(--color-text)]">
@@ -154,7 +252,9 @@ export function PostCard({
             fill={post.viewerHasReacted ? 'currentColor' : 'none'}
             size={18}
           />
-          <span className={`tabular-nums ${heartBurst ? 'animate-[heart-pop_250ms_var(--ease-spring)]' : ''}`}>
+          <span
+            className={`tabular-nums ${heartBurst ? 'animate-[heart-pop_250ms_var(--ease-spring)]' : ''}`}
+          >
             {post.reactionCount}
           </span>
         </button>
@@ -167,26 +267,25 @@ export function PostCard({
       {/* 评论列表容器 —— 使用 grid 动画 */}
       <div
         className={`grid transition-all duration-300 ease-out ${
-          shouldShowComments && comments.length > 0
+          shouldShowComments && topLevel.length > 0
             ? 'grid-rows-[1fr] opacity-100 mt-3'
             : 'grid-rows-[0fr] opacity-0 mt-0 pointer-events-none'
         }`}
       >
         <div className="overflow-hidden">
-          <div className="rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 space-y-3">
-            {comments.map((item) => (
-              <div className="flex gap-3" key={item.id}>
-                <Avatar name={item.author.displayName} size="sm" src={item.author.avatarUrl} />
-                <div className="min-w-0 flex-1">
-                  <p className="break-words text-sm leading-6 text-[var(--color-text)]">
-                    <span className="font-semibold">{item.author.displayName}</span>{' '}
-                    {item.body}
-                  </p>
-                  <p className="text-xs font-medium text-[var(--color-muted)]">
-                    {formatRelativeTime(item.createdAt)}
-                  </p>
-                </div>
-              </div>
+          <div className="rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 space-y-4">
+            {topLevel.map((item) => (
+              <CommentThread
+                key={item.id}
+                comment={item}
+                replyMap={replyMap}
+                replyTo={replyTo}
+                replyBody={replyBody}
+                replying={replying}
+                onReplyBodyChange={setReplyBody}
+                onReplyTo={setReplyTo}
+                onSubmitReply={handleReply}
+              />
             ))}
           </div>
         </div>
@@ -223,6 +322,114 @@ export function PostCard({
         </Button>
       </form>
     </Card>
+  )
+}
+
+function CommentThread({
+  comment,
+  replyMap,
+  replyTo,
+  replyBody,
+  replying,
+  onReplyBodyChange,
+  onReplyTo,
+  onSubmitReply,
+}: {
+  comment: Comment
+  replyMap: Map<string, Comment[]>
+  replyTo: string | null
+  replyBody: string
+  replying: boolean
+  onReplyBodyChange: (value: string) => void
+  onReplyTo: (id: string | null) => void
+  onSubmitReply: (parentId: string) => Promise<void>
+}) {
+  const replies = replyMap.get(comment.id) ?? []
+  const [showAllReplies, setShowAllReplies] = useState(false)
+  const visibleReplies = showAllReplies ? replies : replies.slice(0, 2)
+  const hasMoreReplies = replies.length > 2
+
+  const isReplying = replyTo === comment.id
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-3">
+        <Avatar name={comment.author.displayName} size="sm" src={comment.author.avatarUrl} />
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm leading-6 text-[var(--color-text)]">
+            <span className="font-semibold">{comment.author.displayName}</span>{' '}
+            {comment.body}
+          </p>
+          <div className="mt-1 flex items-center gap-3">
+            <p className="text-xs font-medium text-[var(--color-muted)]">
+              {formatRelativeTime(comment.createdAt)}
+            </p>
+            <button
+              className="text-xs font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-hover)]"
+              onClick={() => onReplyTo(isReplying ? null : comment.id)}
+              type="button"
+            >
+              {isReplying ? '取消回复' : '回复'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 回复列表 */}
+      {visibleReplies.length > 0 ? (
+        <div className="space-y-2 pl-2">
+          {visibleReplies.map((reply) => (
+            <div className="flex gap-2.5" key={reply.id}>
+              <CornerDownRight size={14} className="mt-1 shrink-0 text-[var(--color-muted)]" />
+              <Avatar
+                name={reply.author.displayName}
+                size="xs"
+                src={reply.author.avatarUrl}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="break-words text-sm leading-5 text-[var(--color-text)]">
+                  <span className="font-semibold">{reply.author.displayName}</span>{' '}
+                  {reply.body}
+                </p>
+                <p className="text-xs font-medium text-[var(--color-muted)]">
+                  {formatRelativeTime(reply.createdAt)}
+                </p>
+              </div>
+            </div>
+          ))}
+          {hasMoreReplies && !showAllReplies ? (
+            <button
+              className="text-xs font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-hover)]"
+              onClick={() => setShowAllReplies(true)}
+              type="button"
+            >
+              展开 {replies.length - 2} 条回复
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* 回复输入框 */}
+      {isReplying ? (
+        <div className="flex gap-2 pl-2">
+          <input
+            autoFocus
+            className="focus-ring min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-muted)]/60 focus:border-[var(--color-primary)] focus:shadow-[0_0_0_3px_rgba(45,106,79,0.12)]"
+            onChange={(event) => onReplyBodyChange(event.target.value)}
+            placeholder={`回复 ${comment.author.displayName}...`}
+            value={replyBody}
+          />
+          <Button
+            disabled={replying || !replyBody.trim()}
+            onClick={() => onSubmitReply(comment.id)}
+            size="icon"
+            variant="primary"
+          >
+            {replying ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
+          </Button>
+        </div>
+      ) : null}
+    </div>
   )
 }
 

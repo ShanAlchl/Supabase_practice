@@ -33,10 +33,12 @@ export type Comment = {
   id: string
   postId: string
   authorId: string
+  parentId?: string | null
   body: string
   createdAt: string
   updatedAt?: string
   author: Profile
+  replies?: Comment[]
 }
 
 export type Post = {
@@ -45,6 +47,7 @@ export type Post = {
   authorId: string
   body: string
   createdAt: string
+  pinnedAt: string | null
   author: Profile
   images: PostImage[]
   comments: Comment[]

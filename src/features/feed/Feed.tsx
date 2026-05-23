@@ -9,10 +9,12 @@ type FeedProps = {
   loading?: boolean
   onCompose: () => void
   onToggleReaction: (post: Post) => void
-  onAddComment: (post: Post, body: string) => Promise<void> | void
+  onAddComment: (post: Post, body: string, parentId?: string) => Promise<void> | void
   onLoadComments?: (post: Post) => Promise<Comment[]>
   viewerId?: string
   onDeletePost?: (post: Post) => Promise<void> | void
+  canPin?: boolean
+  onTogglePin?: (post: Post) => Promise<void> | void
 }
 
 export function Feed({
@@ -24,6 +26,8 @@ export function Feed({
   onLoadComments,
   viewerId,
   onDeletePost,
+  canPin,
+  onTogglePin,
 }: FeedProps) {
   if (loading) {
     return <FeedSkeleton />
@@ -43,11 +47,14 @@ export function Feed({
         >
           <PostCard
             key={post.id}
+            viewerId={viewerId}
             onAddComment={onAddComment}
             canDelete={Boolean(viewerId && post.authorId === viewerId)}
             onDelete={onDeletePost}
             onLoadComments={onLoadComments}
             onToggleReaction={onToggleReaction}
+            canPin={canPin}
+            onTogglePin={onTogglePin}
             post={post}
           />
         </div>

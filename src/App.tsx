@@ -15,6 +15,7 @@ import {
   deletePost,
   fetchPosts,
   searchPosts,
+  togglePinPost,
   toggleReaction,
 } from './services/feedService'
 import { fetchComments } from './services/commentService'
@@ -47,6 +48,7 @@ import { CircleSwitcher } from './features/circles/CircleSwitcher'
 import { InviteDialog } from './features/invites/InviteDialog'
 import { NotificationDialog } from './features/notifications/NotificationDialog'
 import { CircleSettingsDialog } from './features/settings/CircleSettingsDialog'
+import { MembersDialog } from './features/settings/MembersDialog'
 import { ProfileSettingsDialog } from './features/settings/ProfileSettingsDialog'
 import { FeedSearchBar } from './features/search/FeedSearchBar'
 import { Card } from './components/ui/Card'
@@ -80,6 +82,7 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
   const [inviteOpen, setInviteOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
   const [circleSettingsOpen, setCircleSettingsOpen] = useState(false)
 
   const profileQuery = useQuery({
@@ -163,8 +166,8 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
   })
 
   const commentMutation = useMutation({
-    mutationFn: (input: { post: Post; body: string }) =>
-      addComment(input.post.id, input.post.circleId, user.id, input.body),
+    mutationFn: (input: { post: Post; body: string; parentId?: string }) =>
+      addComment(input.post.id, input.post.circleId, user.id, input.body, input.parentId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['posts', circleId] }),
   })
 
@@ -279,6 +282,11 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
     },
   })
 
+  const togglePinMutation = useMutation({
+    mutationFn: (post: Post) => togglePinPost(post.id, post.circleId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['posts', circleId] }),
+  })
+
   const updateAvatarMutation = useMutation({
     mutationFn: (file: File) => updateAvatar(user.id, file),
     onSuccess: (data) => {
@@ -326,6 +334,7 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
       onOpenInvites={() => setInviteOpen(true)}
       onOpenNotifications={() => setNotificationsOpen(true)}
       onOpenProfile={() => setProfileOpen(true)}
+      onOpenMembers={() => setMembersOpen(true)}
       onOpenSettings={() => setCircleSettingsOpen(true)}
       profile={profile}
       rightRailTools={
@@ -374,9 +383,13 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
         ) : null}
         <Feed
           loading={postsQuery.isLoading}
-          onAddComment={(post, body) =>
-            commentMutation.mutateAsync({ post, body })
+          onAddComment={(post, body, parentId) =>
+            commentMutation.mutateAsync({ post, body, parentId })
           }
+          canPin={membersQuery.data?.some(
+            (m) => m.userId === user.id && m.role === 'owner',
+          )}
+          onTogglePin={(post) => togglePinMutation.mutateAsync(post)}
           onDeletePost={(post) => deletePostMutation.mutateAsync(post)}
           onLoadComments={async (post) => {
             const page = await fetchComments(post.id, { limit: 30 })
@@ -431,6 +444,13 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
         }}
         open={profileOpen}
         profile={profile}
+      />
+      <MembersDialog
+        currentUserId={user.id}
+        members={membersQuery.data ?? []}
+        onClose={() => setMembersOpen(false)}
+        onRemoveMember={(memberId) => removeMemberMutation.mutateAsync(memberId)}
+        open={membersOpen}
       />
       <CircleSettingsDialog
         busy={updateCircleMutation.isPending || removeMemberMutation.isPending}
@@ -494,6 +514,7 @@ function DemoApp() {
         commentCount: 0,
         reactionCount: 0,
         viewerHasReacted: false,
+        pinnedAt: null,
       },
       ...current,
     ])
@@ -527,6 +548,7 @@ function DemoApp() {
                   id: crypto.randomUUID(),
                   postId: item.id,
                   authorId: demoProfile.id,
+                  parentId: null,
                   body,
                   createdAt: new Date().toISOString(),
                   author: demoProfile,

@@ -13,6 +13,7 @@ type CommentRow = {
   id: string
   post_id: string
   author_id: string
+  parent_id: string | null
   body: string
   created_at: string
   updated_at: string | null
@@ -45,6 +46,7 @@ const toComment = async (row: CommentRow): Promise<Comment> => ({
   id: row.id,
   postId: row.post_id,
   authorId: row.author_id,
+  parentId: row.parent_id,
   body: row.body,
   createdAt: row.created_at,
   updatedAt: row.updated_at ?? row.created_at,
@@ -114,6 +116,7 @@ export const addComment = async (
   circleId: string,
   authorId: string,
   body: string,
+  parentId?: string | null,
 ) => {
   if (!supabase) {
     throw new Error('Supabase is not configured.')
@@ -128,6 +131,7 @@ export const addComment = async (
     post_id: postId,
     circle_id: circleId,
     author_id: authorId,
+    parent_id: parentId ?? null,
     body: trimmed,
   })
 

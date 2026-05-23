@@ -33,6 +33,7 @@ export function CircleSwitcher({
   isDemo = false,
 }: CircleSwitcherProps) {
   const [openCreate, setOpenCreate] = useState(false)
+  const [openJoin, setOpenJoin] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [inviteCode, setInviteCode] = useState('')
@@ -98,26 +99,37 @@ export function CircleSwitcher({
 
       {!isDemo ? (
         <div className="mt-4 space-y-3 border-t border-[var(--color-border)] pt-4">
-          <form className="space-y-3" onSubmit={submitJoin}>
-            <Input
-              autoComplete="off"
-              label="使用邀请码加入"
-              onChange={(event) => setInviteCode(event.target.value)}
-              placeholder="粘贴朋友发来的邀请码"
-              value={inviteCode}
-            />
-            <Button
-              disabled={joinBusy || !inviteCode.trim()}
-              fullWidth
-              type="submit"
-              variant="primary"
-            >
-              {joinBusy ? <RefreshCw className="animate-spin" size={17} /> : <LogIn size={17} />}
-              加入圈子
-            </Button>
-            {joinError ? <Notice tone="error">{joinError}</Notice> : null}
-            {joinMessage ? <Notice tone="success">{joinMessage}</Notice> : null}
-          </form>
+          <Button
+            fullWidth
+            onClick={() => setOpenJoin((current) => !current)}
+            variant="subtle"
+          >
+            <LogIn size={17} />
+            {openJoin ? '取消加入' : '加入圈子'}
+          </Button>
+
+          {openJoin ? (
+            <form className="space-y-3" onSubmit={submitJoin}>
+              <Input
+                autoComplete="off"
+                label="使用邀请码加入"
+                onChange={(event) => setInviteCode(event.target.value)}
+                placeholder="粘贴朋友发来的邀请码"
+                value={inviteCode}
+              />
+              <Button
+                disabled={joinBusy || !inviteCode.trim()}
+                fullWidth
+                type="submit"
+                variant="primary"
+              >
+                {joinBusy ? <RefreshCw className="animate-spin" size={17} /> : <LogIn size={17} />}
+                确认加入
+              </Button>
+              {joinError ? <Notice tone="error">{joinError}</Notice> : null}
+              {joinMessage ? <Notice tone="success">{joinMessage}</Notice> : null}
+            </form>
+          ) : null}
 
           <div>
             <Button
@@ -126,7 +138,7 @@ export function CircleSwitcher({
               variant="subtle"
             >
               <Plus size={17} />
-              创建新圈子
+              {openCreate ? '取消创建' : '创建新圈子'}
             </Button>
             {openCreate ? (
               <form className="mt-3 space-y-3" onSubmit={submitCreate}>
