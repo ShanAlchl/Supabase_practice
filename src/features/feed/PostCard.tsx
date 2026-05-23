@@ -387,26 +387,6 @@ function CommentThread({
 
       {visibleReplies.length > 0 || isReplying ? (
         <div className="space-y-2 pl-3">
-          {isReplying ? (
-            <div className="flex gap-2">
-              <input
-                autoFocus
-                className="focus-ring min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-muted)]/60 focus:border-[var(--color-primary)] focus:shadow-[0_0_0_3px_rgba(45,106,79,0.12)]"
-                onChange={(event) => onReplyBodyChange(event.target.value)}
-                placeholder={`回复 ${comment.author.displayName}...`}
-                value={replyBody}
-              />
-              <Button
-                disabled={replying || !replyBody.trim()}
-                onClick={() => onSubmitReply(comment.id)}
-                size="icon"
-                variant="primary"
-              >
-                {replying ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
-              </Button>
-            </div>
-          ) : null}
-
           {visibleReplies.map((reply) => (
             <CommentItem
               key={reply.id}
