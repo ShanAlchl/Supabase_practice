@@ -6,6 +6,7 @@ import {
   MailPlus,
   Plus,
   Settings,
+  Sparkles,
   UserCog,
   UsersRound,
 } from 'lucide-react'
@@ -24,7 +25,7 @@ type PanelKey = 'feed' | 'members' | 'album' | 'notifications' | 'settings'
 type NavItem = {
   key: PanelKey
   label: string
-  icon: ComponentType<{ size?: number; className?: string }>
+  icon: ComponentType<{ size?: number; className?: string; strokeWidth?: number }>
   disabled?: boolean
 }
 
@@ -99,13 +100,11 @@ export function AppShell({
     <div className="min-h-svh bg-[var(--color-page)] text-[var(--color-text)]">
       <MobileHeader
         circleName={circle.name}
-        isDemo={isDemo}
         notificationCount={notificationCount}
-        onCompose={onCompose}
         onOpenNotifications={onOpenNotifications}
       />
 
-      <div className="mx-auto grid max-w-[1440px] gap-5 px-4 py-4 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-6 lg:py-6 xl:grid-cols-[280px_minmax(0,740px)_340px]">
+      <div className="mx-auto grid max-w-[1440px] gap-5 px-4 py-4 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-6 lg:py-6 xl:grid-cols-[280px_minmax(0,680px)_360px]">
         <LeftRail
           activePanel={activePanel}
           circle={circle}
@@ -150,34 +149,24 @@ export function AppShell({
 
 function MobileHeader({
   circleName,
-  isDemo,
   notificationCount,
-  onCompose,
   onOpenNotifications,
 }: {
   circleName: string
-  isDemo: boolean
   notificationCount: number
-  onCompose: () => void
   onOpenNotifications?: () => void
 }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-page)]/95 px-4 py-3 backdrop-blur lg:hidden">
-      <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-xs font-semibold text-[var(--color-primary)]">
-              {isDemo ? '演示模式' : '私密圈子'}
-            </p>
-            {isDemo ? <Badge tone="warning">Demo</Badge> : null}
+    <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-page)]/80 px-5 py-3.5 backdrop-blur-xl lg:hidden">
+      <div className="mx-auto flex max-w-2xl items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-primary)] text-white">
+            <Sparkles size={16} />
           </div>
-          <h1 className="truncate text-lg font-semibold">{circleName}</h1>
+          <h1 className="text-lg font-bold text-[var(--color-text)]">{circleName}</h1>
         </div>
         <div className="flex items-center gap-2">
           <NotificationButton count={notificationCount} onClick={onOpenNotifications} />
-          <Button aria-label="发布动态" onClick={onCompose} size="icon" variant="primary">
-            <Plus size={20} />
-          </Button>
         </div>
       </div>
     </header>
@@ -223,7 +212,7 @@ function LeftRail({
               </div>
               {isDemo ? <Badge tone="warning">Demo</Badge> : null}
             </div>
-            <div className="rounded-[8px] border border-[var(--color-border)] bg-slate-50 px-3 py-3">
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs font-semibold text-[var(--color-muted)]">圈子成员</span>
                 <span className="text-xs font-semibold text-[var(--color-primary)]">
@@ -248,7 +237,7 @@ function LeftRail({
                   aria-disabled={item.disabled}
                   className={`focus-ring flex w-full items-center justify-between gap-3 rounded-[8px] px-3 py-3 text-left text-sm font-semibold transition duration-200 ${
                     selected
-                      ? 'bg-[var(--color-soft)] text-[var(--color-primary)]'
+                      ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]'
                       : item.disabled
                         ? 'text-slate-400'
                         : 'text-[var(--color-muted)] hover:bg-slate-100 hover:text-[var(--color-text)]'
@@ -333,16 +322,12 @@ function RightRail({
       <Card className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-[var(--color-primary)]">今日概览</p>
-            <h2 className="mt-1 text-lg font-semibold">{circle.name}</h2>
+            <p className="text-sm font-semibold text-[var(--color-primary)]">{circle.name}</p>
+            <p className="mt-1 text-xs text-[var(--color-muted)]">{members.length} 位成员 · {isDemo ? '演示模式' : '私密圈子'}</p>
           </div>
           {isDemo ? <Badge tone="warning">Demo</Badge> : <Badge tone="success">私密</Badge>}
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Metric label="成员" value={members.length} />
-          <Metric label="未读" value={notificationCount} />
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-2">
           <Button onClick={onCompose} variant="primary">
             <Plus size={18} />
             写近况
@@ -355,9 +340,9 @@ function RightRail({
       </Card>
 
       <Card
-        className={`p-5 transition duration-200 ${
+        className={`p-5 transition-all duration-300 ${
           activePanel === 'members'
-            ? 'border-[var(--color-primary)] shadow-[0_0_0_4px_rgba(15,118,110,0.14)]'
+            ? 'border-[var(--color-primary)] shadow-[0_0_0_3px_rgba(45,106,79,0.12)]'
             : ''
         }`}
         id="members"
@@ -421,15 +406,6 @@ function RightRail({
   )
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-[8px] bg-slate-50 px-3 py-3">
-      <p className="text-xs font-semibold text-[var(--color-muted)]">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-[var(--color-text)]">{value}</p>
-    </div>
-  )
-}
-
 function NotificationButton({
   count,
   onClick,
@@ -440,7 +416,7 @@ function NotificationButton({
   return (
     <button
       aria-label="查看通知"
-      className="focus-ring relative inline-flex h-10 w-10 items-center justify-center rounded-[8px] text-[var(--color-muted)] transition duration-200 hover:bg-slate-100"
+      className="focus-ring relative inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-muted)] transition duration-200 hover:bg-[var(--color-surface)]"
       onClick={onClick}
       type="button"
     >
@@ -473,12 +449,12 @@ function MobileNavigation({
     <>
       <Button
         aria-label="发布动态"
-        className="fixed bottom-20 right-4 z-40 rounded-full shadow-[var(--shadow-elevated)] lg:hidden"
+        className="fixed bottom-20 right-5 z-40 h-14 w-14 rounded-full shadow-[var(--shadow-fab)] lg:hidden"
         onClick={onCompose}
         size="icon"
         variant="cta"
       >
-        <Plus size={22} />
+        <Plus size={24} strokeWidth={2.5} />
       </Button>
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-border)] bg-white/95 px-3 py-2 backdrop-blur lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-4 gap-1 text-xs font-semibold">
@@ -488,18 +464,18 @@ function MobileNavigation({
             return (
               <button
                 aria-disabled={item.disabled}
-                className={`focus-ring relative flex flex-col items-center gap-1 rounded-[8px] px-2 py-2 transition duration-200 ${
+                className={`focus-ring relative flex flex-col items-center gap-1 rounded-[var(--radius-lg)] px-3 py-2 transition-all duration-200 ${
                   selected
-                    ? 'text-[var(--color-primary)]'
+                    ? 'text-[var(--color-primary)] bg-[var(--color-primary-light)]'
                     : item.disabled
-                      ? 'text-slate-400'
-                      : 'text-[var(--color-muted)] hover:bg-slate-100'
+                      ? 'text-[var(--color-muted)]/50'
+                      : 'text-[var(--color-muted)] hover:bg-[var(--color-surface)]'
                 }`}
                 key={item.key}
                 onClick={() => onMove(item.key, item.disabled)}
                 type="button"
               >
-                <Icon size={20} />
+                <Icon size={20} strokeWidth={selected ? 2.5 : 2} />
                 {item.key === 'notifications' && notificationCount > 0 ? (
                   <span className="absolute right-5 top-1 h-2 w-2 rounded-full bg-[var(--color-rose)]" />
                 ) : null}

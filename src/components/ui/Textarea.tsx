@@ -16,10 +16,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label ? <span>{label}</span> : null}
         <textarea
           className={cn(
-            'focus-ring w-full resize-none rounded-[8px] border bg-white px-3 py-3 text-sm leading-6 text-[var(--color-text)] outline-none transition duration-200 placeholder:text-slate-400 disabled:text-slate-400',
+            'focus-ring w-full resize-none rounded-[var(--radius-sm)] border bg-white px-3 py-3 text-sm leading-6 text-[var(--color-text)] outline-none transition duration-200 placeholder:text-[var(--color-muted)]/60 disabled:text-[var(--color-muted)]/50',
             error
               ? 'border-rose-300 focus:border-rose-500 focus:shadow-[0_0_0_4px_rgba(225,29,72,0.12)]'
-              : 'border-[var(--color-border)] focus:border-[var(--color-primary)]',
+              : 'border-[var(--color-border)] focus:border-[var(--color-primary)] focus:shadow-[0_0_0_3px_rgba(45,106,79,0.12)]',
             className,
           )}
           id={inputId}

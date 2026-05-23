@@ -84,7 +84,7 @@ export function CircleSettingsDialog({
             const canRemove = isOwner && member.userId !== currentUserId
             return (
               <div
-                className="flex items-center gap-3 rounded-[8px] border border-[var(--color-border)] bg-white p-3"
+                className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-card)] p-3"
                 key={member.userId}
               >
                 <Avatar

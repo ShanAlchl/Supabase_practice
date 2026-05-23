@@ -18,9 +18,9 @@ const sizeClass = {
 const palette = [
   'bg-[var(--color-primary)]',
   'bg-[var(--color-secondary)]',
-  'bg-[var(--color-cta)]',
+  'bg-[var(--color-accent)]',
   'bg-[var(--color-rose)]',
-  'bg-slate-700',
+  'bg-stone-600',
 ]
 
 const colorForName = (name: string) => {
@@ -36,7 +36,7 @@ export function Avatar({ name, src, size = 'md', className }: AvatarProps) {
       <img
         alt={`${name} 的头像`}
         className={cn(
-          'shrink-0 rounded-full object-cover ring-2 ring-white',
+          'shrink-0 rounded-full object-cover ring-2 ring-[var(--color-page)]',
           sizeClass[size],
           className,
         )}

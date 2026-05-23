@@ -64,7 +64,7 @@ export function InviteDialog({
       title="邀请成员"
     >
       <form
-        className="rounded-[8px] border border-[var(--color-border)] bg-slate-50 p-4"
+        className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
         onSubmit={submit}
       >
         <div className="grid gap-4 md:grid-cols-[120px_minmax(240px,1fr)] md:items-end">
@@ -103,7 +103,7 @@ export function InviteDialog({
 
       <div className="mt-5 space-y-3">
         {visibleInvites.length === 0 ? (
-          <div className="rounded-[8px] border border-dashed border-[var(--color-border)] px-4 py-8 text-center text-sm text-[var(--color-muted)]">
+          <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] px-4 py-8 text-center text-sm text-[var(--color-muted)]">
             还没有邀请码，生成一个后就可以复制给朋友。
           </div>
         ) : (
@@ -112,12 +112,12 @@ export function InviteDialog({
             const expired = invite.expiresAt ? new Date(invite.expiresAt) < new Date() : false
             return (
               <div
-                className="rounded-[8px] border border-[var(--color-border)] bg-white p-4"
+                className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-card)] p-4"
                 key={invite.id}
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <code className="inline-flex rounded-[8px] bg-slate-100 px-3 py-2 text-sm font-semibold text-[var(--color-text)]">
+                    <code className="inline-flex rounded-[var(--radius-sm)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-text)]">
                       {invite.code}
                     </code>
                     <p className="mt-2 text-xs text-[var(--color-muted)]">

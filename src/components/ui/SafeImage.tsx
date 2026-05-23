@@ -21,7 +21,7 @@ export function SafeImage({
       <div
         aria-label={alt}
         className={cn(
-          'flex items-center justify-center bg-[linear-gradient(135deg,#E0F2F1,#FFF7ED)] text-[var(--color-primary)]',
+          'flex items-center justify-center bg-[linear-gradient(135deg,var(--color-primary-light),#FFF7ED)] text-[var(--color-primary)]',
           fallbackClassName,
           className,
         )}

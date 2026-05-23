@@ -14,7 +14,7 @@ export function AvatarGroup({ people, max = 4 }: AvatarGroupProps) {
     <div className="flex -space-x-2">
       {visible.map((person) => (
         <Avatar
-          className="border border-white"
+          className="border-2 border-[var(--color-page)]"
           key={person.id}
           name={person.displayName}
           size="sm"
@@ -22,7 +22,7 @@ export function AvatarGroup({ people, max = 4 }: AvatarGroupProps) {
         />
       ))}
       {hidden > 0 ? (
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-slate-100 text-xs font-semibold text-[var(--color-muted)] ring-2 ring-white">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--color-page)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-muted)] ring-2 ring-[var(--color-page)]">
           +{hidden}
         </span>
       ) : null}

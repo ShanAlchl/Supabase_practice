@@ -67,7 +67,7 @@ export function Composer({
   }
 
   return (
-    <Card as="section" className="p-4 sm:p-5">
+    <Card as="section" className="p-5 sm:p-6">
       <form onSubmit={handleSubmit}>
         <div className="flex gap-3">
           <Avatar name={displayName} src={user?.user_metadata.avatar_url} />
@@ -81,7 +81,7 @@ export function Composer({
             </div>
             <Textarea
               aria-label="发布动态内容"
-              className={`bg-slate-50 transition-all duration-200 ${
+              className={`bg-[var(--color-surface)] transition-all duration-300 ${
                 expanded || body || files.length > 0 ? 'min-h-28' : 'min-h-14'
               }`}
               maxLength={800}
@@ -99,10 +99,10 @@ export function Composer({
         </div>
 
         {previews.length > 0 ? (
-          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <div className="mt-5 grid grid-cols-3 gap-3 sm:grid-cols-6">
             {previews.map((preview, index) => (
               <div
-                className="group relative aspect-square overflow-hidden rounded-[8px] border border-[var(--color-border)] bg-slate-100"
+                className="group relative aspect-square overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)]"
                 key={preview.url}
               >
                 <img
@@ -112,7 +112,7 @@ export function Composer({
                 />
                 <button
                   aria-label="移除图片"
-                  className="focus-ring absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-slate-950/60 text-white opacity-100 transition duration-200 hover:bg-slate-950/75 sm:opacity-0 sm:group-hover:opacity-100"
+                  className="focus-ring absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-stone-950/60 text-white opacity-100 transition duration-200 hover:bg-stone-950/75 sm:opacity-0 sm:group-hover:opacity-100"
                   onClick={() => removeFile(index)}
                   type="button"
                 >

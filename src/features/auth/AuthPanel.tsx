@@ -53,7 +53,7 @@ export function AuthPanel() {
       <div className="mx-auto grid min-h-[calc(100svh-3rem)] max-w-6xl items-center gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <section className="space-y-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-[var(--color-primary)] text-white shadow-[var(--shadow-card)]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white shadow-[var(--shadow-card)]">
               <Sparkles size={20} />
             </div>
             <div>
@@ -81,9 +81,9 @@ export function AuthPanel() {
             </h2>
           </div>
 
-          <div className="mb-6 grid grid-cols-2 rounded-[8px] bg-slate-100 p-1">
+          <div className="mb-6 grid grid-cols-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-1">
             <button
-              className={`focus-ring rounded-[7px] px-4 py-2.5 text-sm font-semibold transition duration-200 ${
+              className={`focus-ring rounded-[10px] px-4 py-2.5 text-sm font-semibold transition duration-200 ${
                 mode === 'signin'
                   ? 'bg-white text-[var(--color-text)] shadow-sm'
                   : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
@@ -94,7 +94,7 @@ export function AuthPanel() {
               登录
             </button>
             <button
-              className={`focus-ring rounded-[7px] px-4 py-2.5 text-sm font-semibold transition duration-200 ${
+              className={`focus-ring rounded-[10px] px-4 py-2.5 text-sm font-semibold transition duration-200 ${
                 mode === 'signup'
                   ? 'bg-white text-[var(--color-text)] shadow-sm'
                   : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
@@ -161,17 +161,17 @@ function PreviewWall() {
       <div className="grid gap-3 sm:grid-cols-[1fr_0.8fr]">
         <div
           aria-label="朋友聚会照片预览"
-          className="relative min-h-56 overflow-hidden rounded-[8px] border border-[var(--color-border)] bg-[linear-gradient(135deg,#ccfbf1_0%,#fef3c7_52%,#ffe4e6_100%)] sm:h-full"
+          className="relative min-h-56 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[linear-gradient(135deg,#ccfbf1_0%,#fef3c7_52%,#ffe4e6_100%)] sm:h-full"
           role="img"
         >
           <div className="absolute left-6 top-6 h-24 w-24 rounded-full bg-white/45 blur-xl" />
-          <div className="absolute bottom-5 left-5 right-5 rounded-[8px] border border-white/60 bg-white/70 p-3 shadow-sm backdrop-blur">
+          <div className="absolute bottom-5 left-5 right-5 rounded-[var(--radius-md)] border border-white/60 bg-white/70 p-3 shadow-sm backdrop-blur">
             <p className="text-sm font-semibold text-[var(--color-text)]">周末小聚</p>
             <p className="mt-1 text-xs text-[var(--color-muted)]">3 张照片 · 6 位朋友</p>
           </div>
         </div>
         <div className="space-y-3">
-          <div className="rounded-[8px] bg-[var(--color-soft)] p-4">
+          <div className="rounded-[var(--radius-md)] bg-[var(--color-primary-light)]/40 p-4">
             <div className="flex items-start gap-3">
               <Avatar name="林夏" size="sm" />
               <div className="min-w-0">
@@ -191,7 +191,7 @@ function PreviewWall() {
             </div>
           </div>
 
-          <div className="rounded-[8px] border border-[var(--color-border)] bg-white p-4">
+          <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white p-4">
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
               <Camera size={17} className="text-[var(--color-primary)]" />
               照片记录
@@ -200,7 +200,7 @@ function PreviewWall() {
               {['bg-teal-100', 'bg-orange-100', 'bg-rose-100'].map((color, index) => (
                 <div
                   aria-label={`照片缩略图 ${index + 1}`}
-                  className={`aspect-square rounded-[8px] ${color}`}
+                  className={`aspect-square rounded-[var(--radius-sm)] ${color}`}
                   key={color}
                   role="img"
                 />

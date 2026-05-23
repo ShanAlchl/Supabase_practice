@@ -26,10 +26,10 @@ export function Dialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/30 p-4 backdrop-blur-sm">
       <Card
         aria-modal="true"
-        className={cn('max-h-[calc(100svh-2rem)] w-full max-w-md overflow-auto p-5', className)}
+        className={cn('animate-dialog-enter max-h-[calc(100svh-2rem)] w-full max-w-md overflow-auto rounded-[var(--radius-lg)] p-6', className)}
         role="dialog"
       >
         <div className="mb-4 flex items-center justify-between gap-3">

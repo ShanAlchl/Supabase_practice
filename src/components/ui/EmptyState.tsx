@@ -9,7 +9,7 @@ type EmptyStateProps = {
 export function EmptyState({ onCompose }: EmptyStateProps) {
   return (
     <Card className="border-dashed px-6 py-12 text-center">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-soft)] text-[var(--color-primary)]">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary)]">
         <Camera size={22} />
       </div>
       <h2 className="text-lg font-semibold text-[var(--color-text)]">还没有动态</h2>

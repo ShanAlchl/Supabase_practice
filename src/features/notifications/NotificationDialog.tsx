@@ -59,7 +59,7 @@ export function NotificationDialog({
 
       <div className="space-y-3">
         {notifications.length === 0 ? (
-          <div className="rounded-[8px] border border-dashed border-[var(--color-border)] px-4 py-8 text-center text-sm text-[var(--color-muted)]">
+          <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] px-4 py-8 text-center text-sm text-[var(--color-muted)]">
             暂时没有通知。
           </div>
         ) : (
@@ -67,10 +67,10 @@ export function NotificationDialog({
             const Icon = iconFor(item.type)
             return (
               <div
-                className={`rounded-[8px] border p-3 ${
+                className={`rounded-[var(--radius-sm)] border p-3 ${
                   item.readAt
-                    ? 'border-[var(--color-border)] bg-white'
-                    : 'border-teal-200 bg-[var(--color-soft)]'
+                    ? 'border-[var(--color-border)] bg-[var(--color-card)]'
+                    : 'border-[var(--color-primary)]/20 bg-[var(--color-primary-light)]/40'
                 }`}
                 key={item.id}
               >

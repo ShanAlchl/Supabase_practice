@@ -2,25 +2,54 @@
 @import "tailwindcss";
 
 :root {
-  --color-primary: #0f766e;
-  --color-primary-hover: #115e59;
-  --color-secondary: #14b8a6;
-  --color-cta: #f97316;
-  --color-rose: #e11d48;
-  --color-page: #f8fafc;
-  --color-soft: #f0fdfa;
+  /* === 核心品牌色：从冷 teal 转向暖绿 === */
+  --color-primary: #2d6a4f;
+  --color-primary-hover: #1b4332;
+  --color-primary-light: #d8f3dc;
+  --color-secondary: #52b788;
+
+  /* === 情感强调色：暖珊瑚代替冷橙 === */
+  --color-accent: #e07a5f;
+  --color-accent-hover: #c85a3e;
+  --color-rose: #e56b6f;
+
+  /* === 背景层级：暖白体系 === */
+  --color-page: #faf9f7;
+  --color-surface: #f3f1ed;
   --color-card: #ffffff;
-  --color-text: #102a2a;
-  --color-muted: #475569;
-  --color-border: #d7e3df;
-  --color-error-bg: #fff1f2;
-  --color-error-text: #991b1b;
+
+  /* === 文字层级 === */
+  --color-text: #1c1917;
+  --color-text-secondary: #57534e;
+  --color-muted: #a8a29e;
+
+  /* === 边框与分割 === */
+  --color-border: #e7e5e4;
+  --color-border-light: #f0eeeb;
+
+  /* === 状态色 === */
   --color-success-bg: #ecfdf5;
   --color-success-text: #065f46;
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.05), 0 14px 32px rgba(15, 42, 42, 0.06);
-  --shadow-elevated: 0 24px 80px rgba(15, 42, 42, 0.12);
-  --radius-card: 8px;
-  --ring-primary: 0 0 0 4px rgba(15, 118, 110, 0.16);
+  --color-error-bg: #fef2f2;
+  --color-error-text: #991b1b;
+
+  /* === 阴影：更柔和的扩散 === */
+  --shadow-card: 0 1px 3px rgba(28, 25, 23, 0.04), 0 8px 24px rgba(28, 25, 23, 0.06);
+  --shadow-elevated: 0 16px 48px rgba(28, 25, 23, 0.12);
+  --shadow-fab: 0 4px 14px rgba(224, 122, 95, 0.35);
+
+  /* === 圆角层级 === */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  /* === 动画 === */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
 
   color: var(--color-text);
   background: var(--color-page);
@@ -31,6 +60,36 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 400ms var(--ease-out-expo) both;
+}
+
+.animate-dialog-enter {
+  animation: dialog-enter 300ms var(--ease-out-expo) both;
 }
 
 * {
@@ -83,7 +142,7 @@ button:disabled,
 
 :focus-visible {
   outline: none;
-  box-shadow: var(--ring-primary);
+  box-shadow: 0 0 0 4px rgba(45, 106, 79, 0.15);
 }
 
 .focus-ring {
@@ -91,12 +150,12 @@ button:disabled,
 }
 
 .focus-ring:focus-visible {
-  box-shadow: var(--ring-primary);
+  box-shadow: 0 0 0 4px rgba(45, 106, 79, 0.15);
 }
 
 .surface-card {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-md);
   background: var(--color-card);
   box-shadow: var(--shadow-card);
 }

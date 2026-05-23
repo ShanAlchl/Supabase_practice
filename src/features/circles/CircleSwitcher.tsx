@@ -62,7 +62,7 @@ export function CircleSwitcher({
   }
 
   return (
-    <Card className="p-4">
+    <Card className="p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h2 className="font-semibold">圈子</h2>
@@ -76,10 +76,10 @@ export function CircleSwitcher({
           const selected = circle.id === activeCircleId
           return (
             <button
-              className={`focus-ring w-full rounded-[8px] border px-3 py-2.5 text-left transition duration-200 ${
+              className={`focus-ring w-full rounded-[var(--radius-sm)] border px-3 py-2.5 text-left transition duration-200 ${
                 selected
-                  ? 'border-[var(--color-primary)] bg-[var(--color-soft)]'
-                  : 'border-[var(--color-border)] bg-white hover:bg-slate-50'
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
+                  : 'border-[var(--color-border)] bg-white hover:bg-[var(--color-surface)]'
               }`}
               key={circle.id}
               onClick={() => onSelect(circle.id)}

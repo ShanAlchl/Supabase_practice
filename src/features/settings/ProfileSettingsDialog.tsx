@@ -36,6 +36,7 @@ export function ProfileSettingsDialog({
     if (!open) {
       return
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDisplayName(profile.displayName)
     setBio(profile.bio ?? '')
     setLocalAvatar(null)
@@ -67,7 +68,7 @@ export function ProfileSettingsDialog({
           size="lg"
           src={localAvatar ?? profile.avatarUrl}
         />
-        <label className="focus-ring inline-flex h-10 cursor-pointer items-center gap-2 rounded-[8px] border border-[var(--color-border)] bg-white px-3 text-sm font-semibold transition duration-200 hover:bg-slate-50">
+        <label className="focus-ring inline-flex h-10 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 text-sm font-semibold transition duration-200 hover:bg-[var(--color-surface)]">
           {busy ? <RefreshCw className="animate-spin" size={17} /> : <Camera size={17} />}
           更换头像
           <input

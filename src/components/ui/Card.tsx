@@ -17,7 +17,7 @@ export function Card({
   return (
     <Component
       className={cn(
-        'rounded-[8px] border border-[var(--color-border)] bg-[var(--color-card)]',
+        'rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-card)]',
         elevated ? 'shadow-[var(--shadow-elevated)]' : 'shadow-[var(--shadow-card)]',
         className,
       )}

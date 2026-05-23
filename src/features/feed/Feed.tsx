@@ -34,17 +34,23 @@ export function Feed({
   }
 
   return (
-    <div className="space-y-4">
-      {posts.map((post) => (
-        <PostCard
+    <div className="space-y-5">
+      {posts.map((post, index) => (
+        <div
           key={post.id}
-          onAddComment={onAddComment}
-          canDelete={Boolean(viewerId && post.authorId === viewerId)}
-          onDelete={onDeletePost}
-          onLoadComments={onLoadComments}
-          onToggleReaction={onToggleReaction}
-          post={post}
-        />
+          className="animate-fade-in-up"
+          style={{ animationDelay: `${Math.min(index * 60, 300)}ms` }}
+        >
+          <PostCard
+            key={post.id}
+            onAddComment={onAddComment}
+            canDelete={Boolean(viewerId && post.authorId === viewerId)}
+            onDelete={onDeletePost}
+            onLoadComments={onLoadComments}
+            onToggleReaction={onToggleReaction}
+            post={post}
+          />
+        </div>
       ))}
     </div>
   )
@@ -52,9 +58,9 @@ export function Feed({
 
 function FeedSkeleton() {
   return (
-    <div className="space-y-4" aria-label="动态加载中">
+    <div className="space-y-5" aria-label="动态加载中">
       {[0, 1, 2].map((item) => (
-        <Card className="p-4 sm:p-5" key={item}>
+        <Card className="p-5 sm:p-6" key={item}>
           <div className="flex items-center gap-3">
             <Skeleton className="h-10 w-10 rounded-full" />
             <div className="flex-1 space-y-2">
@@ -66,7 +72,7 @@ function FeedSkeleton() {
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-4/5" />
           </div>
-          <Skeleton className="mt-4 h-52 w-full" />
+          <Skeleton className="mt-5 h-56 w-full rounded-[var(--radius-md)]" />
           <div className="mt-4 flex gap-2">
             <Skeleton className="h-9 w-20" />
             <Skeleton className="h-9 w-20" />

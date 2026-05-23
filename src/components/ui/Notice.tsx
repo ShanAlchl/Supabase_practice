@@ -11,9 +11,9 @@ type NoticeProps = HTMLAttributes<HTMLDivElement> & {
 }
 
 const toneClass: Record<NoticeTone, string> = {
-  info: 'border-teal-200 bg-[var(--color-soft)] text-[var(--color-primary-hover)]',
-  success: 'border-emerald-200 bg-[var(--color-success-bg)] text-[var(--color-success-text)]',
-  error: 'border-rose-200 bg-[var(--color-error-bg)] text-[var(--color-error-text)]',
+  info: 'border-l-[var(--color-primary)] bg-[var(--color-primary-light)]/60 text-[var(--color-primary-hover)]',
+  success: 'border-l-[var(--color-secondary)] bg-[var(--color-success-bg)] text-[var(--color-success-text)]',
+  error: 'border-l-[var(--color-rose)] bg-[var(--color-error-bg)] text-[var(--color-error-text)]',
 }
 
 const iconMap = {
@@ -34,7 +34,7 @@ export function Notice({
   return (
     <div
       className={cn(
-        'flex gap-3 rounded-[8px] border px-4 py-3 text-sm leading-6',
+        'flex gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] px-4 py-3 text-sm leading-6',
         toneClass[tone],
         className,
       )}

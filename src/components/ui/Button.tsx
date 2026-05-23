@@ -15,22 +15,22 @@ const variantClass: Record<ButtonVariant, string> = {
   primary:
     'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-hover)] disabled:bg-[var(--color-primary)]/45',
   secondary:
-    'bg-[var(--color-soft)] text-[var(--color-primary)] hover:bg-teal-100 active:bg-teal-100 disabled:text-[var(--color-primary)]/45',
+    'bg-[var(--color-primary-light)] text-[var(--color-primary)] hover:bg-[#b7e4c7] active:bg-[#b7e4c7] disabled:text-[var(--color-primary)]/45',
   cta:
-    'bg-[var(--color-cta)] text-white hover:bg-orange-600 active:bg-orange-700 disabled:bg-[var(--color-cta)]/45',
+    'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-hover)] disabled:bg-[var(--color-accent)]/45',
   ghost:
-    'bg-transparent text-[var(--color-muted)] hover:bg-slate-100 active:bg-slate-200 disabled:text-slate-300',
+    'bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-surface)] active:bg-[var(--color-border-light)] disabled:text-[var(--color-muted)]/50',
   subtle:
-    'border border-[var(--color-border)] bg-white text-[var(--color-text)] hover:bg-slate-50 active:bg-slate-100 disabled:text-slate-300',
+    'border border-[var(--color-border)] bg-white text-[var(--color-text)] hover:bg-[var(--color-surface)] active:bg-[var(--color-border-light)] disabled:text-[var(--color-muted)]/50',
   danger:
     'bg-[var(--color-error-bg)] text-[var(--color-error-text)] hover:bg-rose-100 active:bg-rose-100 disabled:text-rose-300',
 }
 
 const sizeClass: Record<ButtonSize, string> = {
-  sm: 'h-9 px-3 text-sm',
-  md: 'h-10 px-4 text-sm',
-  lg: 'h-12 px-5 text-base',
-  icon: 'h-10 w-10 p-0',
+  sm: 'h-9 px-3 text-sm rounded-[var(--radius-sm)]',
+  md: 'h-10 px-4 text-sm rounded-[var(--radius-sm)]',
+  lg: 'h-12 px-5 text-base rounded-[var(--radius-md)]',
+  icon: 'h-10 w-10 p-0 rounded-[var(--radius-sm)]',
 }
 
 export function Button({
@@ -45,7 +45,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'focus-ring inline-flex shrink-0 items-center justify-center gap-2 rounded-[8px] font-semibold transition duration-200 disabled:pointer-events-none disabled:opacity-70',
+        'focus-ring inline-flex shrink-0 items-center justify-center gap-2 font-semibold transition-all duration-150 disabled:pointer-events-none disabled:opacity-60 active:scale-[0.97] active:duration-100',
         variantClass[variant],
         sizeClass[size],
         fullWidth && 'w-full',
