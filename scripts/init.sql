@@ -347,6 +347,7 @@ returns table (
   body text,
   created_at timestamptz,
   updated_at timestamptz,
+  pinned_at timestamptz,
   author jsonb,
   images jsonb,
   comment_count bigint,
@@ -365,6 +366,7 @@ as $$
     p.body,
     p.created_at,
     p.updated_at,
+    p.pinned_at,
     jsonb_build_object(
       'id', pr.id,
       'display_name', pr.display_name,

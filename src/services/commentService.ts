@@ -72,6 +72,7 @@ export const fetchComments = async (
       id,
       post_id,
       author_id,
+      parent_id,
       body,
       created_at,
       updated_at,
@@ -160,6 +161,7 @@ export const updateComment = async (commentId: string, body: string) => {
       post_id,
       author_id,
       body,
+      parent_id,
       created_at,
       updated_at,
       author:profiles!comments_author_id_fkey(id, display_name, avatar_url, bio)
