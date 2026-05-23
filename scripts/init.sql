@@ -334,6 +334,8 @@ $$;
 
 grant execute on function public.create_circle(text, text) to authenticated;
 
+drop function if exists public.get_feed_posts(uuid, timestamptz, uuid, int);
+
 create or replace function public.get_feed_posts(
   target_circle_id uuid,
   before_created_at timestamptz default null,
@@ -580,6 +582,8 @@ end;
 $$;
 
 grant execute on function public.create_circle_invite(uuid, int, timestamptz) to authenticated;
+
+drop function if exists public.accept_circle_invite(text);
 
 create or replace function public.accept_circle_invite(invite_code text)
 returns table (
