@@ -536,7 +536,7 @@ function DemoApp() {
     )
   }
 
-  const addDemoComment = (post: Post, body: string) => {
+  const addDemoComment = (post: Post, body: string, parentId?: string) => {
     setPosts((current) =>
       current.map((item) =>
         item.id === post.id
@@ -548,7 +548,7 @@ function DemoApp() {
                   id: crypto.randomUUID(),
                   postId: item.id,
                   authorId: demoProfile.id,
-                  parentId: null,
+                  parentId: parentId ?? null,
                   body,
                   createdAt: new Date().toISOString(),
                   author: demoProfile,

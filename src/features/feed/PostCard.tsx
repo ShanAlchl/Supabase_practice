@@ -369,8 +369,10 @@ function CommentThread({
   const allReplies = replyMap.get(comment.id) ?? []
   const [showAll, setShowAll] = useState(false)
   const visibleReplies = showAll ? allReplies : allReplies.slice(0, 2)
-  const hasMore = allReplies.length > 2
+  const hiddenCount = Math.max(0, allReplies.length - 2)
   const isReplying = replyTo === comment.id
+  const showReplyList = visibleReplies.length > 0 || isReplying
+  const showToggle = hiddenCount > 0 || showAll
 
   return (
     <div className="space-y-2">
@@ -385,7 +387,7 @@ function CommentThread({
         replying={replying}
       />
 
-      {visibleReplies.length > 0 || isReplying ? (
+      {showReplyList ? (
         <div className="space-y-2 pl-3">
           {visibleReplies.map((reply) => (
             <CommentItem
@@ -401,13 +403,16 @@ function CommentThread({
             />
           ))}
 
-          {hasMore ? (
+          {showToggle ? (
             <button
               className="text-xs font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-hover)]"
-              onClick={() => setShowAll((prev) => !prev)}
+              onClick={(event) => {
+                event.stopPropagation()
+                setShowAll((prev) => !prev)
+              }}
               type="button"
             >
-              {showAll ? '收起回复' : `展开 ${allReplies.length - 2} 条回复`}
+              {showAll ? '收起回复' : `展开 ${hiddenCount} 条回复`}
             </button>
           ) : null}
         </div>
