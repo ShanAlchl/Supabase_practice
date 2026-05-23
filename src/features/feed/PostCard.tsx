@@ -41,7 +41,7 @@ export function PostCard({
   const [comment, setComment] = useState('')
   const [commenting, setCommenting] = useState(false)
   const [loadedComments, setLoadedComments] = useState<Comment[] | null>(null)
-  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(post.comments.length > 0)
   const [loadingComments, setLoadingComments] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [pinning, setPinning] = useState(false)
@@ -53,7 +53,7 @@ export function PostCard({
 
   const commentCount = post.commentCount ?? post.comments.length
   const comments = loadedComments ?? post.comments
-  const shouldShowComments = commentsOpen || post.comments.length > 0
+  const shouldShowComments = commentsOpen
 
   const { topLevel, replyMap, commentMap } = useMemo(() => {
     const idMap = new Map<string, Comment>()
@@ -324,15 +324,26 @@ export function PostCard({
         </div>
       </div>
 
-      {/* "查看评论" 按钮 —— 仅在评论区收起且有评论时显示 */}
-      {!shouldShowComments && commentCount > 0 ? (
+      {/* 展开/收起评论区域 */}
+      {commentCount > 0 ? (
         <button
           className="focus-ring mt-3 rounded-[var(--radius-sm)] text-sm font-semibold text-[var(--color-primary)] transition duration-200 hover:text-[var(--color-primary-hover)]"
           disabled={loadingComments}
-          onClick={loadComments}
+          onClick={() => {
+            if (!shouldShowComments) {
+              loadComments()
+            } else {
+              setCommentsOpen(false)
+              setReplyTo(null)
+            }
+          }}
           type="button"
         >
-          {loadingComments ? '正在加载评论...' : `查看 ${commentCount} 条评论`}
+          {loadingComments
+            ? '正在加载评论...'
+            : shouldShowComments
+              ? '收起评论'
+              : `查看 ${commentCount} 条评论`}
         </button>
       ) : null}
 
