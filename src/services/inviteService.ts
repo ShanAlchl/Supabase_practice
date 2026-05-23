@@ -14,11 +14,11 @@ type InviteRow = {
 }
 
 type AcceptInviteRow = {
-  circle_id: string
-  name: string
-  description: string | null
-  created_by: string
-  joined: boolean
+  joined_circle_id: string
+  circle_name: string
+  circle_description: string | null
+  circle_created_by: string
+  did_join: boolean
 }
 
 const toInvite = (row: InviteRow): CircleInvite => ({
@@ -161,12 +161,12 @@ export const acceptCircleInvite = async (code: string) => {
   const row = data as AcceptInviteRow
   return {
     circle: {
-      id: row.circle_id,
-      name: row.name,
-      description: row.description,
-      createdBy: row.created_by,
+      id: row.joined_circle_id,
+      name: row.circle_name,
+      description: row.circle_description,
+      createdBy: row.circle_created_by,
     } satisfies Circle,
-    joined: row.joined,
+    joined: row.did_join,
   }
 }
 

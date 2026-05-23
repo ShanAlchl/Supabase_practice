@@ -583,11 +583,11 @@ grant execute on function public.create_circle_invite(uuid, int, timestamptz) to
 
 create or replace function public.accept_circle_invite(invite_code text)
 returns table (
-  circle_id uuid,
-  name text,
-  description text,
-  created_by uuid,
-  joined boolean
+  joined_circle_id uuid,
+  circle_name text,
+  circle_description text,
+  circle_created_by uuid,
+  did_join boolean
 )
 language plpgsql
 security definer
