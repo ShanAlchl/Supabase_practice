@@ -35,6 +35,22 @@ export const ensureProfile = async (user: SessionUser) => {
     throw new Error('Supabase is not configured.')
   }
 
+  // 先查询是否已存在 profile，避免 upsert 覆盖用户已修改的数据
+  const { data: existing, error: fetchError } = await supabase
+    .from('profiles')
+    .select('id, display_name, avatar_url, bio')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (fetchError) {
+    throw fetchError
+  }
+
+  if (existing) {
+    return toProfile(existing)
+  }
+
+  // 不存在则创建默认 profile
   const displayName =
     user.user_metadata.display_name ??
     user.user_metadata.name ??
@@ -43,14 +59,11 @@ export const ensureProfile = async (user: SessionUser) => {
 
   const { data, error } = await supabase
     .from('profiles')
-    .upsert(
-      {
-        id: user.id,
-        display_name: displayName,
-        avatar_url: user.user_metadata.avatar_url ?? null,
-      },
-      { onConflict: 'id' },
-    )
+    .insert({
+      id: user.id,
+      display_name: displayName,
+      avatar_url: user.user_metadata.avatar_url ?? null,
+    })
     .select('id, display_name, avatar_url, bio')
     .single()
 

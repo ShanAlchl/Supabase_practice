@@ -274,6 +274,7 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
       queryClient.invalidateQueries({ queryKey: ['profile', user.id] })
       queryClient.invalidateQueries({ queryKey: ['members', circleId] })
       queryClient.invalidateQueries({ queryKey: ['posts', circleId] })
+      queryClient.invalidateQueries({ queryKey: ['notifications', user.id] })
     },
   })
 
@@ -283,6 +284,7 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
       queryClient.invalidateQueries({ queryKey: ['profile', user.id] })
       queryClient.invalidateQueries({ queryKey: ['members', circleId] })
       queryClient.invalidateQueries({ queryKey: ['posts', circleId] })
+      queryClient.invalidateQueries({ queryKey: ['notifications', user.id] })
     },
   })
 
