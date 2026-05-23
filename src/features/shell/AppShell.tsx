@@ -130,9 +130,7 @@ export function AppShell({
           circle={circle}
           isDemo={isDemo}
           members={members}
-          notificationCount={notificationCount}
           onOpenInvites={onOpenInvites}
-          onOpenNotifications={onOpenNotifications}
           onOpenSettings={onOpenSettings}
           tools={rightRailTools}
         />
@@ -286,18 +284,14 @@ function RightRail({
   circle,
   isDemo,
   members,
-  notificationCount,
   onOpenInvites,
-  onOpenNotifications,
   onOpenSettings,
   tools,
 }: {
   circle: Circle
   isDemo: boolean
   members: CircleMember[]
-  notificationCount: number
   onOpenInvites?: () => void
-  onOpenNotifications?: () => void
   onOpenSettings?: () => void
   tools?: ReactNode
 }) {
@@ -339,18 +333,6 @@ function RightRail({
         </Button>
       </Card>
 
-      <Card className="p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-semibold">通知</h2>
-          <Badge tone={notificationCount > 0 ? 'primary' : 'neutral'}>
-            {notificationCount} 未读
-          </Badge>
-        </div>
-        <Button disabled={isDemo} fullWidth onClick={onOpenNotifications} variant="subtle">
-          <Bell size={18} />
-          查看通知
-        </Button>
-      </Card>
     </aside>
   )
 }

@@ -55,22 +55,39 @@ export function PostCard({
   const shouldShowComments = commentsOpen || post.comments.length > 0
 
   const { topLevel, replyMap, commentMap } = useMemo(() => {
-    const map = new Map<string, Comment[]>()
-    const top: Comment[] = []
     const idMap = new Map<string, Comment>()
     for (const c of comments) {
       idMap.set(c.id, c)
+    }
+
+    const getRootId = (comment: Comment): string | null => {
+      if (!comment.parentId) return null
+      const parent = idMap.get(comment.parentId)
+      if (!parent) return null
+      if (!parent.parentId) return parent.id
+      return getRootId(parent)
+    }
+
+    const map = new Map<string, Comment[]>()
+    const top: Comment[] = []
+
+    for (const c of comments) {
       if (!c.parentId) {
         top.push(c)
       } else {
-        const list = map.get(c.parentId) ?? []
-        list.push(c)
-        map.set(c.parentId, list)
+        const rootId = getRootId(c)
+        if (rootId) {
+          const list = map.get(rootId) ?? []
+          list.push(c)
+          map.set(rootId, list)
+        }
       }
     }
+
     for (const list of map.values()) {
       list.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     }
+
     return { topLevel: top, replyMap: map, commentMap: idMap }
   }, [comments])
 
@@ -281,7 +298,6 @@ export function PostCard({
                 key={item.id}
                 comment={item}
                 commentMap={commentMap}
-                depth={0}
                 replyMap={replyMap}
                 replyTo={replyTo}
                 replyBody={replyBody}
@@ -339,7 +355,6 @@ function CommentThread({
   onReplyBodyChange,
   onReplyTo,
   onSubmitReply,
-  depth = 0,
 }: {
   comment: Comment
   replyMap: Map<string, Comment[]>
@@ -350,31 +365,111 @@ function CommentThread({
   onReplyBodyChange: (value: string) => void
   onReplyTo: (id: string | null) => void
   onSubmitReply: (parentId: string) => Promise<void>
-  depth?: number
 }) {
-  const replies = replyMap.get(comment.id) ?? []
-  const [showAllReplies, setShowAllReplies] = useState(false)
-  const visibleReplies = showAllReplies ? replies : replies.slice(0, 2)
-  const hasMoreReplies = replies.length > 2
-
+  const allReplies = replyMap.get(comment.id) ?? []
+  const [showAll, setShowAll] = useState(false)
+  const visibleReplies = showAll ? allReplies : allReplies.slice(0, 2)
+  const hasMore = allReplies.length > 2
   const isReplying = replyTo === comment.id
 
+  return (
+    <div className="space-y-2">
+      <CommentItem
+        comment={comment}
+        commentMap={commentMap}
+        isReplying={isReplying}
+        onReplyBodyChange={onReplyBodyChange}
+        onReplyTo={onReplyTo}
+        onSubmitReply={onSubmitReply}
+        replyBody={replyBody}
+        replying={replying}
+      />
+
+      {visibleReplies.length > 0 || isReplying ? (
+        <div className="space-y-2 pl-3">
+          {isReplying ? (
+            <div className="flex gap-2">
+              <input
+                autoFocus
+                className="focus-ring min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-muted)]/60 focus:border-[var(--color-primary)] focus:shadow-[0_0_0_3px_rgba(45,106,79,0.12)]"
+                onChange={(event) => onReplyBodyChange(event.target.value)}
+                placeholder={`回复 ${comment.author.displayName}...`}
+                value={replyBody}
+              />
+              <Button
+                disabled={replying || !replyBody.trim()}
+                onClick={() => onSubmitReply(comment.id)}
+                size="icon"
+                variant="primary"
+              >
+                {replying ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
+              </Button>
+            </div>
+          ) : null}
+
+          {visibleReplies.map((reply) => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              commentMap={commentMap}
+              isReplying={replyTo === reply.id}
+              onReplyBodyChange={onReplyBodyChange}
+              onReplyTo={onReplyTo}
+              onSubmitReply={onSubmitReply}
+              replyBody={replyBody}
+              replying={replying}
+            />
+          ))}
+
+          {hasMore ? (
+            <button
+              className="text-xs font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-hover)]"
+              onClick={() => setShowAll((prev) => !prev)}
+              type="button"
+            >
+              {showAll ? '收起回复' : `展开 ${allReplies.length - 2} 条回复`}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function CommentItem({
+  comment,
+  commentMap,
+  isReplying,
+  replyBody,
+  replying,
+  onReplyBodyChange,
+  onReplyTo,
+  onSubmitReply,
+}: {
+  comment: Comment
+  commentMap: Map<string, Comment>
+  isReplying: boolean
+  replyBody: string
+  replying: boolean
+  onReplyBodyChange: (value: string) => void
+  onReplyTo: (id: string | null) => void
+  onSubmitReply: (parentId: string) => Promise<void>
+}) {
   const parentAuthorName = comment.parentId
     ? commentMap.get(comment.parentId)?.author.displayName
     : null
 
-  const showActions = isReplying || visibleReplies.length > 0 || (hasMoreReplies && !showAllReplies)
+  const isRoot = !comment.parentId
 
   return (
     <div className="space-y-2">
-      {/* 评论主体 */}
-      <div className={`flex ${depth === 0 ? 'gap-3' : 'gap-2.5'}`}>
-        {depth > 0 ? (
+      <div className={`flex ${isRoot ? 'gap-3' : 'gap-2.5'}`}>
+        {!isRoot ? (
           <CornerDownRight size={14} className="mt-1 shrink-0 text-[var(--color-muted)]" />
         ) : null}
         <Avatar
           name={comment.author.displayName}
-          size={depth === 0 ? 'sm' : 'xs'}
+          size={isRoot ? 'sm' : 'xs'}
           src={comment.author.avatarUrl}
         />
         <div className="min-w-0 flex-1">
@@ -400,57 +495,23 @@ function CommentThread({
         </div>
       </div>
 
-      {/* 子评论区域（递归） */}
-      {showActions ? (
-        <div className="space-y-2 pl-3">
-          {/* 回复输入框 */}
-          {isReplying ? (
-            <div className="flex gap-2">
-              <input
-                autoFocus
-                className="focus-ring min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-muted)]/60 focus:border-[var(--color-primary)] focus:shadow-[0_0_0_3px_rgba(45,106,79,0.12)]"
-                onChange={(event) => onReplyBodyChange(event.target.value)}
-                placeholder={`回复 ${comment.author.displayName}...`}
-                value={replyBody}
-              />
-              <Button
-                disabled={replying || !replyBody.trim()}
-                onClick={() => onSubmitReply(comment.id)}
-                size="icon"
-                variant="primary"
-              >
-                {replying ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
-              </Button>
-            </div>
-          ) : null}
-
-          {/* 子评论列表 */}
-          {visibleReplies.map((reply) => (
-            <CommentThread
-              key={reply.id}
-              comment={reply}
-              commentMap={commentMap}
-              depth={depth + 1}
-              onReplyBodyChange={onReplyBodyChange}
-              onReplyTo={onReplyTo}
-              onSubmitReply={onSubmitReply}
-              replyBody={replyBody}
-              replyMap={replyMap}
-              replyTo={replyTo}
-              replying={replying}
-            />
-          ))}
-
-          {/* 展开按钮 */}
-          {hasMoreReplies && !showAllReplies ? (
-            <button
-              className="text-xs font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-hover)]"
-              onClick={() => setShowAllReplies(true)}
-              type="button"
-            >
-              展开 {replies.length - 2} 条回复
-            </button>
-          ) : null}
+      {isReplying ? (
+        <div className="flex gap-2 pl-2">
+          <input
+            autoFocus
+            className="focus-ring min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-muted)]/60 focus:border-[var(--color-primary)] focus:shadow-[0_0_0_3px_rgba(45,106,79,0.12)]"
+            onChange={(event) => onReplyBodyChange(event.target.value)}
+            placeholder={`回复 ${comment.author.displayName}...`}
+            value={replyBody}
+          />
+          <Button
+            disabled={replying || !replyBody.trim()}
+            onClick={() => onSubmitReply(comment.id)}
+            size="icon"
+            variant="primary"
+          >
+            {replying ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
+          </Button>
         </div>
       ) : null}
     </div>
