@@ -270,7 +270,8 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
         displayName: input.displayName,
         bio: input.bio,
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(['profile', user.id], data)
       queryClient.invalidateQueries({ queryKey: ['profile', user.id] })
       queryClient.invalidateQueries({ queryKey: ['members', circleId] })
       queryClient.invalidateQueries({ queryKey: ['posts', circleId] })
@@ -280,7 +281,8 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
 
   const updateAvatarMutation = useMutation({
     mutationFn: (file: File) => updateAvatar(user.id, file),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(['profile', user.id], data)
       queryClient.invalidateQueries({ queryKey: ['profile', user.id] })
       queryClient.invalidateQueries({ queryKey: ['members', circleId] })
       queryClient.invalidateQueries({ queryKey: ['posts', circleId] })
@@ -355,6 +357,7 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
       >
         <Composer
           circle={circle}
+          profile={profile}
           onSubmit={async (body, files) => {
             await createPostMutation.mutateAsync({ body, files })
           }}

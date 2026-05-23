@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { ImagePlus, Loader2, Lock, Send, X } from 'lucide-react'
-import type { Circle, SessionUser } from '../../types/domain'
+import type { Circle, Profile, SessionUser } from '../../types/domain'
 import { Avatar } from '../../components/ui/Avatar'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -11,6 +11,7 @@ import { Textarea } from '../../components/ui/Textarea'
 type ComposerProps = {
   circle: Circle
   user: SessionUser | null
+  profile?: Profile | null
   demoName?: string
   onSubmit: (body: string, files: File[]) => Promise<void> | void
   submitting?: boolean
@@ -21,6 +22,7 @@ const MAX_IMAGES = 6
 export function Composer({
   circle,
   user,
+  profile,
   demoName = '你',
   onSubmit,
   submitting = false,
@@ -39,7 +41,10 @@ export function Composer({
   )
 
   const displayName =
-    user?.user_metadata.display_name ?? user?.email?.split('@')[0] ?? demoName
+    profile?.displayName ??
+    user?.user_metadata.display_name ??
+    user?.email?.split('@')[0] ??
+    demoName
   const canSubmit = Boolean(body.trim() || files.length > 0)
   const reachedImageLimit = files.length >= MAX_IMAGES
 
@@ -70,7 +75,7 @@ export function Composer({
     <Card as="section" className="p-5 sm:p-6">
       <form onSubmit={handleSubmit}>
         <div className="flex gap-3">
-          <Avatar name={displayName} src={user?.user_metadata.avatar_url} />
+          <Avatar name={displayName} src={profile?.avatarUrl ?? user?.user_metadata.avatar_url} />
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <p className="font-semibold text-[var(--color-text)]">{displayName}</p>
