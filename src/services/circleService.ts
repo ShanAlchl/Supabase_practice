@@ -111,3 +111,27 @@ export const removeCircleMember = async (circleId: string, userId: string) => {
     throw error
   }
 }
+
+export const leaveCircle = async (circleId: string) => {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.')
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated.')
+  }
+
+  const { error } = await supabase
+    .from('circle_members')
+    .delete()
+    .eq('circle_id', circleId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    throw error
+  }
+}

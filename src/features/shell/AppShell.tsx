@@ -3,7 +3,6 @@ import {
   Camera,
   Home,
   LogOut,
-  MailPlus,
   Plus,
   Settings,
   Sparkles,
@@ -36,7 +35,6 @@ type AppShellProps = {
   user: SessionUser | null
   isDemo: boolean
   onCompose: () => void
-  onOpenInvites?: () => void
   onOpenNotifications?: () => void
   onOpenSettings?: () => void
   onOpenProfile?: () => void
@@ -61,7 +59,6 @@ export function AppShell({
   user,
   isDemo,
   onCompose,
-  onOpenInvites,
   onOpenNotifications,
   onOpenSettings,
   onOpenProfile,
@@ -101,14 +98,14 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-svh bg-[var(--color-page)] text-[var(--color-text)]">
+    <div className="min-h-svh bg-[var(--color-page)] text-[var(--color-text)] lg:h-screen lg:overflow-hidden">
       <MobileHeader
         circleName={circle.name}
         notificationCount={notificationCount}
         onOpenNotifications={onOpenNotifications}
       />
 
-      <div className="mx-auto grid max-w-[1440px] gap-5 px-4 py-4 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-6 lg:py-6 xl:grid-cols-[280px_minmax(0,680px)_360px]">
+      <div className="mx-auto grid max-w-[1440px] gap-5 px-4 py-4 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-6 lg:py-6 xl:grid-cols-[280px_minmax(0,680px)_360px] lg:h-[calc(100vh-3rem)]">
         <LeftRail
           activePanel={activePanel}
           circle={circle}
@@ -122,7 +119,7 @@ export function AppShell({
           user={user}
         />
 
-        <main className="min-w-0 pb-28 lg:pb-8" id="feed">
+        <main className="min-w-0 h-full overflow-auto quiet-scrollbar pb-28 lg:pb-8" id="feed">
           {children}
         </main>
 
@@ -130,7 +127,6 @@ export function AppShell({
           circle={circle}
           isDemo={isDemo}
           members={members}
-          onOpenInvites={onOpenInvites}
           onOpenSettings={onOpenSettings}
           tools={rightRailTools}
         />
@@ -196,7 +192,7 @@ function LeftRail({
   user: SessionUser | null
 }) {
   return (
-    <aside className="sticky top-6 hidden h-[calc(100svh-3rem)] min-h-[620px] flex-col justify-between lg:flex">
+    <aside className="hidden h-full flex-col overflow-auto quiet-scrollbar lg:flex">
       <Card className="flex h-full flex-col justify-between p-4">
         <div>
           <div className="mb-5">
@@ -284,19 +280,17 @@ function RightRail({
   circle,
   isDemo,
   members,
-  onOpenInvites,
   onOpenSettings,
   tools,
 }: {
   circle: Circle
   isDemo: boolean
   members: CircleMember[]
-  onOpenInvites?: () => void
   onOpenSettings?: () => void
   tools?: ReactNode
 }) {
   return (
-    <aside className="sticky top-6 hidden h-[calc(100svh-3rem)] space-y-4 overflow-auto pb-2 xl:block quiet-scrollbar">
+    <aside className="hidden h-full space-y-4 overflow-auto pb-2 xl:block quiet-scrollbar">
       {tools}
 
       <Card className="p-5">
@@ -310,26 +304,6 @@ function RightRail({
         <Button disabled={isDemo} fullWidth onClick={onOpenSettings} variant="subtle">
           <Settings size={18} />
           设置
-        </Button>
-      </Card>
-
-      <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2">
-          <MailPlus size={18} className="text-[var(--color-primary)]" />
-          <h2 className="font-semibold">邀请入口</h2>
-        </div>
-        <p className="text-sm leading-6 text-[var(--color-muted)]">
-          生成有次数和过期时间限制的邀请码，让朋友安全加入这个圈子。
-        </p>
-        <Button
-          className="mt-4"
-          disabled={isDemo}
-          fullWidth
-          onClick={onOpenInvites}
-          variant="subtle"
-        >
-          <MailPlus size={18} />
-          管理邀请
         </Button>
       </Card>
 

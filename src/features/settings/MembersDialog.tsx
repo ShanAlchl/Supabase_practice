@@ -1,4 +1,4 @@
-import { UserMinus } from 'lucide-react'
+import { MailPlus, UserMinus } from 'lucide-react'
 import type { CircleMember } from '../../types/domain'
 import { Avatar } from '../../components/ui/Avatar'
 import { Badge } from '../../components/ui/Badge'
@@ -11,6 +11,7 @@ type MembersDialogProps = {
   currentUserId: string
   onClose: () => void
   onRemoveMember?: (userId: string) => Promise<void>
+  onOpenInvites?: () => void
 }
 
 export function MembersDialog({
@@ -19,6 +20,7 @@ export function MembersDialog({
   currentUserId,
   onClose,
   onRemoveMember,
+  onOpenInvites,
 }: MembersDialogProps) {
   const isOwner = members.some(
     (member) => member.userId === currentUserId && member.role === 'owner',
@@ -26,6 +28,25 @@ export function MembersDialog({
 
   return (
     <Dialog className="max-w-lg" onClose={onClose} open={open} title="圈子成员">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-[var(--color-muted)]">
+          共 {members.length} 位成员
+        </p>
+        {isOwner ? (
+          <Button
+            onClick={() => {
+              onClose()
+              onOpenInvites?.()
+            }}
+            size="sm"
+            variant="primary"
+          >
+            <MailPlus size={16} />
+            邀请成员
+          </Button>
+        ) : null}
+      </div>
+
       <div className="space-y-3">
         {members.map((member) => {
           const canRemove = isOwner && member.userId !== currentUserId

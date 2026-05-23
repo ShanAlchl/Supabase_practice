@@ -28,6 +28,7 @@ import {
 } from './services/profileService'
 import {
   createCircle,
+  leaveCircle,
   listCircles,
   removeCircleMember,
   updateCircle,
@@ -242,6 +243,15 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members', circleId] }),
   })
 
+  const leaveCircleMutation = useMutation({
+    mutationFn: () => leaveCircle(circleId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['circles', user.id] })
+      queryClient.invalidateQueries({ queryKey: ['default-circle', user.id] })
+      queryClient.invalidateQueries({ queryKey: ['members', circleId] })
+    },
+  })
+
   const createInviteMutation = useMutation({
     mutationFn: (input: { maxUses: number; expiresAt: string | null }) =>
       createCircleInvite(circleId!, {
@@ -331,7 +341,6 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
       members={membersQuery.data ?? []}
       notificationCount={unreadCount}
       onCompose={scrollToComposer}
-      onOpenInvites={() => setInviteOpen(true)}
       onOpenNotifications={() => setNotificationsOpen(true)}
       onOpenProfile={() => setProfileOpen(true)}
       onOpenMembers={() => setMembersOpen(true)}
@@ -449,6 +458,7 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
         currentUserId={user.id}
         members={membersQuery.data ?? []}
         onClose={() => setMembersOpen(false)}
+        onOpenInvites={() => setInviteOpen(true)}
         onRemoveMember={(memberId) => removeMemberMutation.mutateAsync(memberId)}
         open={membersOpen}
       />
@@ -459,6 +469,9 @@ function PrivateCircleApp({ user }: { user: SessionUser }) {
         error={updateCircleMutation.error?.message ?? removeMemberMutation.error?.message}
         members={membersQuery.data ?? []}
         onClose={() => setCircleSettingsOpen(false)}
+        onLeaveCircle={async () => {
+          await leaveCircleMutation.mutateAsync()
+        }}
         onRemoveMember={(memberId) => removeMemberMutation.mutateAsync(memberId)}
         onSave={async (input) => {
           await updateCircleMutation.mutateAsync(input)
