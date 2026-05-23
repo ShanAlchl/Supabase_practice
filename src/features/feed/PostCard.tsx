@@ -49,6 +49,7 @@ export function PostCard({
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const [replyBody, setReplyBody] = useState('')
   const [replying, setReplying] = useState(false)
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set())
 
   const commentCount = post.commentCount ?? post.comments.length
   const comments = loadedComments ?? post.comments
@@ -298,6 +299,7 @@ export function PostCard({
                 key={item.id}
                 comment={item}
                 commentMap={commentMap}
+                isExpanded={expandedThreads.has(item.id)}
                 replyMap={replyMap}
                 replyTo={replyTo}
                 replyBody={replyBody}
@@ -305,6 +307,17 @@ export function PostCard({
                 onReplyBodyChange={setReplyBody}
                 onReplyTo={setReplyTo}
                 onSubmitReply={handleReply}
+                onToggleExpand={() =>
+                  setExpandedThreads((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(item.id)) {
+                      next.delete(item.id)
+                    } else {
+                      next.add(item.id)
+                    }
+                    return next
+                  })
+                }
               />
             ))}
           </div>
@@ -349,30 +362,33 @@ function CommentThread({
   comment,
   replyMap,
   commentMap,
+  isExpanded,
   replyTo,
   replyBody,
   replying,
   onReplyBodyChange,
   onReplyTo,
   onSubmitReply,
+  onToggleExpand,
 }: {
   comment: Comment
   replyMap: Map<string, Comment[]>
   commentMap: Map<string, Comment>
+  isExpanded: boolean
   replyTo: string | null
   replyBody: string
   replying: boolean
   onReplyBodyChange: (value: string) => void
   onReplyTo: (id: string | null) => void
   onSubmitReply: (parentId: string) => Promise<void>
+  onToggleExpand: () => void
 }) {
   const allReplies = replyMap.get(comment.id) ?? []
-  const [showAll, setShowAll] = useState(false)
-  const visibleReplies = showAll ? allReplies : allReplies.slice(0, 2)
+  const visibleReplies = isExpanded ? allReplies : allReplies.slice(0, 2)
   const hiddenCount = Math.max(0, allReplies.length - 2)
   const isReplying = replyTo === comment.id
   const showReplyList = visibleReplies.length > 0 || isReplying
-  const showToggle = hiddenCount > 0 || showAll
+  const showToggle = hiddenCount > 0
 
   return (
     <div className="space-y-2">
@@ -408,11 +424,11 @@ function CommentThread({
               className="text-xs font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-hover)]"
               onClick={(event) => {
                 event.stopPropagation()
-                setShowAll((prev) => !prev)
+                onToggleExpand()
               }}
               type="button"
             >
-              {showAll ? '收起回复' : `展开 ${hiddenCount} 条回复`}
+              {isExpanded ? '收起回复' : `展开 ${hiddenCount} 条回复`}
             </button>
           ) : null}
         </div>
