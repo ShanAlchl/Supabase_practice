@@ -90,6 +90,7 @@ export type CircleInvite = {
 export type NotificationType =
   | 'post_reacted'
   | 'post_commented'
+  | 'comment_replied'
   | 'member_joined'
   | 'invite_accepted'
 
@@ -104,4 +105,17 @@ export type CircleNotification = {
   readAt: string | null
   createdAt: string
   actor?: Profile | null
+}
+
+export type AlbumImage = {
+  id: string
+  postId: string
+  circleId: string
+  authorId: string
+  url: string
+  storagePath: string
+  sortOrder: number
+  postBody: string
+  postCreatedAt: string
+  author: Profile
 }

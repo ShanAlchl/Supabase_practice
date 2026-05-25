@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { ImagePlus, Loader2, Lock, Send, X } from 'lucide-react'
 import type { Circle, Profile, SessionUser } from '../../types/domain'
@@ -7,6 +7,8 @@ import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Textarea } from '../../components/ui/Textarea'
+import { useObjectUrls } from '../../hooks/useObjectUrls'
+import { cn } from '../../lib/cn'
 
 type ComposerProps = {
   circle: Circle
@@ -15,6 +17,8 @@ type ComposerProps = {
   demoName?: string
   onSubmit: (body: string, files: File[]) => Promise<void> | void
   submitting?: boolean
+  framed?: boolean
+  className?: string
 }
 
 const MAX_IMAGES = 6
@@ -26,19 +30,14 @@ export function Composer({
   demoName = '你',
   onSubmit,
   submitting = false,
+  framed = true,
+  className,
 }: ComposerProps) {
   const [body, setBody] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [expanded, setExpanded] = useState(false)
 
-  const previews = useMemo(
-    () =>
-      files.map((file) => ({
-        name: file.name,
-        url: URL.createObjectURL(file),
-      })),
-    [files],
-  )
+  const previews = useObjectUrls(files)
 
   const displayName =
     profile?.displayName ??
@@ -71,8 +70,7 @@ export function Composer({
     setExpanded(false)
   }
 
-  return (
-    <Card as="section" className="p-5 sm:p-6">
+  const content = (
       <form onSubmit={handleSubmit}>
         <div className="flex gap-3">
           <Avatar name={displayName} src={profile?.avatarUrl ?? user?.user_metadata.avatar_url} />
@@ -167,6 +165,15 @@ export function Composer({
           </div>
         )}
       </form>
+  )
+
+  if (!framed) {
+    return <section className={cn('p-0', className)}>{content}</section>
+  }
+
+  return (
+    <Card as="section" className={cn('p-5 sm:p-6', className)}>
+      {content}
     </Card>
   )
 }

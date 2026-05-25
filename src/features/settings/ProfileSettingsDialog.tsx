@@ -8,6 +8,7 @@ import { Dialog } from '../../components/ui/Dialog'
 import { Input } from '../../components/ui/Input'
 import { Notice } from '../../components/ui/Notice'
 import { Textarea } from '../../components/ui/Textarea'
+import { useObjectUrls } from '../../hooks/useObjectUrls'
 
 type ProfileSettingsDialogProps = {
   open: boolean
@@ -30,7 +31,9 @@ export function ProfileSettingsDialog({
 }: ProfileSettingsDialogProps) {
   const [displayName, setDisplayName] = useState(profile.displayName)
   const [bio, setBio] = useState(profile.bio ?? '')
-  const [localAvatar, setLocalAvatar] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const avatarPreviews = useObjectUrls(avatarFile ? [avatarFile] : [])
+  const localAvatar = avatarPreviews[0]?.url ?? null
 
   useEffect(() => {
     if (!open) {
@@ -39,7 +42,7 @@ export function ProfileSettingsDialog({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDisplayName(profile.displayName)
     setBio(profile.bio ?? '')
-    setLocalAvatar(null)
+    setAvatarFile(null)
   }, [open, profile])
 
   const submit = async (event: FormEvent) => {
@@ -53,8 +56,7 @@ export function ProfileSettingsDialog({
   const changeAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      const previewUrl = URL.createObjectURL(file)
-      setLocalAvatar(previewUrl)
+      setAvatarFile(file)
       await onAvatar(file)
     }
     event.target.value = ''

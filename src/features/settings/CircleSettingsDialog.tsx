@@ -143,7 +143,6 @@ export function CircleSettingsDialog({
             退出圈子后，你将无法查看这个圈子的动态和成员。圈主需要先转让圈主身份才能退出。
           </p>
           <Button
-            disabled={isOwner}
             onClick={() => {
               setLeaveConfirmOpen(true)
               setLeaveConfirmName('')
@@ -152,7 +151,7 @@ export function CircleSettingsDialog({
             variant="danger"
           >
             <LogOut size={16} />
-            {isOwner ? '圈主无法直接退出' : '退出圈子'}
+            退出圈子
           </Button>
         </div>
       </Dialog>
@@ -184,7 +183,16 @@ export function CircleSettingsDialog({
             {leaveError}
           </Notice>
         ) : null}
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3">
+          <Button
+            disabled={leaving || !leaveConfirmName.trim()}
+            fullWidth
+            onClick={handleLeave}
+            variant="danger"
+          >
+            {leaving ? <RefreshCw className="animate-spin" size={16} /> : <LogOut size={16} />}
+            确认退出
+          </Button>
           <Button
             fullWidth
             onClick={() => {
@@ -195,15 +203,6 @@ export function CircleSettingsDialog({
             variant="subtle"
           >
             取消
-          </Button>
-          <Button
-            disabled={leaving || !leaveConfirmName.trim()}
-            fullWidth
-            onClick={handleLeave}
-            variant="danger"
-          >
-            {leaving ? <RefreshCw className="animate-spin" size={16} /> : <LogOut size={16} />}
-            确认退出
           </Button>
         </div>
       </Dialog>

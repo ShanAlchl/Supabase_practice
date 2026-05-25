@@ -144,6 +144,30 @@ export const markAllNotificationsRead = async () => {
   return data as number
 }
 
+export const deleteAllReadNotifications = async () => {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.')
+  }
+
+  // Try RPC first (preferred for centralized logic)
+  const { data, error } = await supabase.rpc('delete_all_read_notifications')
+  if (!error) {
+    return data as number
+  }
+
+  // Fallback: use client-side delete if RPC doesn't exist (backward compat)
+  const { error: deleteError } = await supabase
+    .from('notifications')
+    .delete()
+    .not('read_at', 'is', null)
+
+  if (deleteError) {
+    throw deleteError
+  }
+
+  return 0
+}
+
 export const subscribeNotifications = (
   recipientId: string,
   onChange: () => void,

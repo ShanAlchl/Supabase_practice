@@ -9,7 +9,6 @@ import {
   UserCog,
   UsersRound,
 } from 'lucide-react'
-import { useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
 import type { Circle, CircleMember, Profile, SessionUser } from '../../types/domain'
 import { supabase } from '../../lib/supabase'
@@ -19,7 +18,7 @@ import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 
-type PanelKey = 'feed' | 'members' | 'album' | 'notifications' | 'settings'
+export type PanelKey = 'feed' | 'members' | 'album' | 'notifications' | 'settings'
 
 type NavItem = {
   key: PanelKey
@@ -34,6 +33,8 @@ type AppShellProps = {
   profile: Profile
   user: SessionUser | null
   isDemo: boolean
+  activePanel: PanelKey
+  onActivePanelChange: (panel: PanelKey) => void
   onCompose: () => void
   onOpenNotifications?: () => void
   onOpenSettings?: () => void
@@ -47,7 +48,7 @@ type AppShellProps = {
 const navItems: NavItem[] = [
   { key: 'feed', label: '动态', icon: Home },
   { key: 'members', label: '成员', icon: UsersRound },
-  { key: 'album', label: '相册', icon: Camera, disabled: true },
+  { key: 'album', label: '相册', icon: Camera },
   { key: 'notifications', label: '通知', icon: Bell },
   { key: 'settings', label: '设置', icon: Settings },
 ]
@@ -58,6 +59,8 @@ export function AppShell({
   profile,
   user,
   isDemo,
+  activePanel,
+  onActivePanelChange,
   onCompose,
   onOpenNotifications,
   onOpenSettings,
@@ -67,18 +70,17 @@ export function AppShell({
   rightRailTools,
   children,
 }: AppShellProps) {
-  const [activePanel, setActivePanel] = useState<PanelKey>('feed')
   const signOut = () => {
     supabase?.auth.signOut()
   }
 
   const moveToPanel = (panel: PanelKey, disabled?: boolean) => {
     if (disabled) {
-      setActivePanel(panel)
+      onActivePanelChange(panel)
       return
     }
 
-    setActivePanel(panel)
+    onActivePanelChange(panel)
     if (panel === 'members') {
       onOpenMembers?.()
       return
@@ -347,7 +349,7 @@ function MobileNavigation({
   onMove: (panel: PanelKey, disabled?: boolean) => void
 }) {
   const mobileItems = navItems.filter((item) =>
-    ['feed', 'members', 'notifications', 'settings'].includes(item.key),
+    ['feed', 'album', 'settings'].includes(item.key),
   )
 
   return (

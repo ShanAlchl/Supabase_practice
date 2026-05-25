@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { queryKeys } from '../../lib/queryKeys'
 
 export const useRealtimeFeed = (circleId: string | null) => {
   const queryClient = useQueryClient()
@@ -21,7 +22,7 @@ export const useRealtimeFeed = (circleId: string | null) => {
           table: 'posts',
           filter: `circle_id=eq.${circleId}`,
         },
-        () => queryClient.invalidateQueries({ queryKey: ['posts', circleId] }),
+        () => queryClient.invalidateQueries({ queryKey: queryKeys.postsRoot(circleId) }),
       )
       .on(
         'postgres_changes',
@@ -31,7 +32,7 @@ export const useRealtimeFeed = (circleId: string | null) => {
           table: 'comments',
           filter: `circle_id=eq.${circleId}`,
         },
-        () => queryClient.invalidateQueries({ queryKey: ['posts', circleId] }),
+        () => queryClient.invalidateQueries({ queryKey: queryKeys.postsRoot(circleId) }),
       )
       .on(
         'postgres_changes',
@@ -41,7 +42,7 @@ export const useRealtimeFeed = (circleId: string | null) => {
           table: 'reactions',
           filter: `circle_id=eq.${circleId}`,
         },
-        () => queryClient.invalidateQueries({ queryKey: ['posts', circleId] }),
+        () => queryClient.invalidateQueries({ queryKey: queryKeys.postsRoot(circleId) }),
       )
       .subscribe()
 

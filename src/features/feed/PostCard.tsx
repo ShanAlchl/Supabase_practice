@@ -7,29 +7,42 @@ import {
   MessageCircle,
   Pin,
   Send,
-  Trash2,
 } from 'lucide-react'
 import type { Comment, Post } from '../../types/domain'
+import type { FeedCursor, PaginatedResult } from '../../types/domain'
 import { Avatar } from '../../components/ui/Avatar'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { SafeImage } from '../../components/ui/SafeImage'
 import { formatRelativeTime } from '../../utils/time'
+import { PostActionsMenu } from './PostActionsMenu'
+import { CommentActionsMenu } from './CommentActionsMenu'
 
 type PostCardProps = {
   post: Post
   viewerId?: string
+  highlighted?: boolean
   onToggleReaction: (post: Post) => void
   onAddComment: (post: Post, body: string, parentId?: string) => Promise<void> | void
-  onLoadComments?: (post: Post) => Promise<Comment[]>
+  onLoadComments?: (
+    post: Post,
+    cursor?: FeedCursor | null,
+  ) => Promise<PaginatedResult<Comment>>
   canDelete?: boolean
   onDelete?: (post: Post) => Promise<void> | void
   canPin?: boolean
   onTogglePin?: (post: Post) => Promise<void> | void
+  onUpdatePost?: (post: Post, body: string) => Promise<void> | void
+  onUpdateComment?: (commentId: string, body: string) => Promise<void> | void
+  onDeleteComment?: (commentId: string) => Promise<void> | void
+  highlightedCommentId?: string | null
 }
 
 export function PostCard({
   post,
+  viewerId,
+  highlighted = false,
   onToggleReaction,
   onAddComment,
   onLoadComments,
@@ -37,10 +50,15 @@ export function PostCard({
   onDelete,
   canPin = false,
   onTogglePin,
+  onUpdatePost,
+  onUpdateComment,
+  onDeleteComment,
+  highlightedCommentId = null,
 }: PostCardProps) {
   const [comment, setComment] = useState('')
   const [commenting, setCommenting] = useState(false)
   const [loadedComments, setLoadedComments] = useState<Comment[] | null>(null)
+  const [commentsCursor, setCommentsCursor] = useState<FeedCursor | null>(null)
   const [commentsOpen, setCommentsOpen] = useState(post.comments.length > 0)
   const [loadingComments, setLoadingComments] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -50,6 +68,10 @@ export function PostCard({
   const [replyBody, setReplyBody] = useState('')
   const [replying, setReplying] = useState(false)
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set())
+  const [editingPost, setEditingPost] = useState(false)
+  const [editBody, setEditBody] = useState(post.body)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   const commentCount = post.commentCount ?? post.comments.length
   const comments = loadedComments ?? post.comments
@@ -111,13 +133,89 @@ export function PostCard({
 
     setLoadingComments(true)
     try {
-      const loaded = await onLoadComments(post)
-      setLoadedComments(loaded)
+      const page = await onLoadComments(post)
+      setLoadedComments(page.items)
+      setCommentsCursor(page.nextCursor)
       setCommentsOpen(true)
     } finally {
       setLoadingComments(false)
     }
   }
+
+  const loadMoreComments = async () => {
+    if (!onLoadComments || loadingComments || !commentsCursor) {
+      return
+    }
+
+    setLoadingComments(true)
+    try {
+      const page = await onLoadComments(post, commentsCursor)
+      setLoadedComments((current) => [...page.items, ...(current ?? [])])
+      setCommentsCursor(page.nextCursor)
+      setCommentsOpen(true)
+    } finally {
+      setLoadingComments(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!highlightedCommentId) return
+    let cancelled = false
+    const frame = requestAnimationFrame(() => {
+      if (cancelled) return
+      setCommentsOpen(true)
+
+      if (!commentMap.has(highlightedCommentId) && loadedComments === null && onLoadComments) {
+        setLoadingComments(true)
+        onLoadComments(post)
+          .then((page) => {
+            if (cancelled) return
+            setLoadedComments(page.items)
+            setCommentsCursor(page.nextCursor)
+            setCommentsOpen(true)
+          })
+          .finally(() => {
+            if (!cancelled) {
+              setLoadingComments(false)
+            }
+          })
+      }
+    })
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
+    }
+  }, [highlightedCommentId, commentMap, loadedComments, onLoadComments, post])
+
+  useEffect(() => {
+    if (!highlightedCommentId) return
+    const target = commentMap.get(highlightedCommentId)
+    if (!target) return
+
+    const findRootId = (commentItem: Comment): string => {
+      if (!commentItem.parentId) return commentItem.id
+      const parent = commentMap.get(commentItem.parentId)
+      return parent ? findRootId(parent) : commentItem.id
+    }
+
+    const rootId = findRootId(target)
+    const frame = requestAnimationFrame(() => {
+      if (rootId !== target.id) {
+        setExpandedThreads((prev) => {
+          if (prev.has(rootId)) return prev
+          const next = new Set(prev)
+          next.add(rootId)
+          return next
+        })
+      }
+      document
+        .getElementById(`comment-${highlightedCommentId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+
+    return () => cancelAnimationFrame(frame)
+  }, [highlightedCommentId, commentMap])
 
   const handleComment = async (event: FormEvent) => {
     event.preventDefault()
@@ -130,8 +228,9 @@ export function PostCard({
       await onAddComment(post, comment)
       setComment('')
       if (onLoadComments) {
-        const loaded = await onLoadComments(post)
-        setLoadedComments(loaded)
+        const page = await onLoadComments(post)
+        setLoadedComments(page.items)
+        setCommentsCursor(page.nextCursor)
         setCommentsOpen(true)
       }
     } finally {
@@ -150,8 +249,9 @@ export function PostCard({
       setReplyBody('')
       setReplyTo(null)
       if (onLoadComments) {
-        const loaded = await onLoadComments(post)
-        setLoadedComments(loaded)
+        const page = await onLoadComments(post)
+        setLoadedComments(page.items)
+        setCommentsCursor(page.nextCursor)
         setCommentsOpen(true)
       }
     } finally {
@@ -163,17 +263,12 @@ export function PostCard({
     if (!onDelete || deleting) {
       return
     }
-
-    const confirmed = window.confirm('确定删除这条动态吗？相关评论、点赞和图片也会一起删除。')
-    if (!confirmed) {
-      return
-    }
-
     setDeleting(true)
     try {
       await onDelete(post)
     } finally {
       setDeleting(false)
+      setDeleteConfirmOpen(false)
     }
   }
 
@@ -190,6 +285,22 @@ export function PostCard({
     }
   }
 
+  const handleSaveEdit = async () => {
+    if (!onUpdatePost || savingEdit) return
+    const trimmed = editBody.trim()
+    if (!trimmed || trimmed === post.body) {
+      setEditingPost(false)
+      return
+    }
+    setSavingEdit(true)
+    try {
+      await onUpdatePost(post, trimmed)
+      setEditingPost(false)
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
   const isPinned = Boolean(post.pinnedAt)
 
   return (
@@ -197,7 +308,7 @@ export function PostCard({
       as="article"
       className={`group overflow-hidden p-5 transition-all duration-300 hover:shadow-[var(--shadow-elevated)] hover:-translate-y-0.5 sm:p-6 ${
         isPinned ? 'border-l-4 border-l-[var(--color-primary)]' : ''
-      }`}
+      } ${highlighted ? 'ring-2 ring-[var(--color-primary)] ring-offset-2' : ''}`}
     >
       {isPinned ? (
         <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primary)]">
@@ -219,38 +330,56 @@ export function PostCard({
           </div>
         </div>
         <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          {canPin ? (
-            <Button
-              aria-label={isPinned ? '取消置顶' : '置顶'}
-              disabled={pinning}
-              onClick={handleTogglePin}
-              size="icon"
-              variant="ghost"
-            >
-              {pinning ? (
-                <Loader2 className="animate-spin" size={16} />
-              ) : (
-                <Pin size={16} className={isPinned ? 'text-[var(--color-primary)]' : ''} />
-              )}
-            </Button>
-          ) : null}
-          {canDelete ? (
-            <Button
-              aria-label="删除动态"
-              disabled={deleting}
-              onClick={handleDelete}
-              size="icon"
-              variant="ghost"
-            >
-              {deleting ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
-            </Button>
-          ) : null}
+          <PostActionsMenu
+            canDelete={canDelete}
+            canEdit={Boolean(viewerId && post.authorId === viewerId && onUpdatePost)}
+            canPin={canPin}
+            isPinned={isPinned}
+            onDelete={() => setDeleteConfirmOpen(true)}
+            onEdit={() => {
+              setEditBody(post.body)
+              setEditingPost(true)
+            }}
+            onTogglePin={handleTogglePin}
+            post={post}
+          />
         </div>
       </header>
 
-      <p className="mt-5 whitespace-pre-wrap break-words text-[15px] leading-8 text-[var(--color-text)]">
-        {post.body}
-      </p>
+      {editingPost ? (
+        <div className="mt-5 space-y-2">
+          <textarea
+            className="focus-ring min-h-[100px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-white px-3 py-2.5 text-[15px] leading-7 text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-muted)]/60 focus:border-[var(--color-primary)] focus:shadow-[0_0_0_3px_rgba(45,106,79,0.12)]"
+            onChange={(e) => setEditBody(e.target.value)}
+            value={editBody}
+          />
+          <div className="flex gap-2">
+            <Button
+              disabled={savingEdit}
+              onClick={handleSaveEdit}
+              size="sm"
+              variant="primary"
+            >
+              {savingEdit ? <Loader2 className="animate-spin" size={14} /> : '保存'}
+            </Button>
+            <Button
+              disabled={savingEdit}
+              onClick={() => {
+                setEditingPost(false)
+                setEditBody(post.body)
+              }}
+              size="sm"
+              variant="subtle"
+            >
+              取消
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-5 whitespace-pre-wrap break-words text-[15px] leading-8 text-[var(--color-text)]">
+          {post.body}
+        </p>
+      )}
 
       {post.images.length > 0 ? (
         <ImageGrid images={post.images.map((image) => image.url)} />
@@ -318,6 +447,10 @@ export function PostCard({
                     return next
                   })
                 }
+                viewerId={viewerId}
+                onUpdateComment={onUpdateComment}
+                onDeleteComment={onDeleteComment}
+                highlightedCommentId={highlightedCommentId}
               />
             ))}
           </div>
@@ -347,6 +480,17 @@ export function PostCard({
         </button>
       ) : null}
 
+      {shouldShowComments && commentsCursor ? (
+        <button
+          className="focus-ring mt-3 rounded-[var(--radius-sm)] text-sm font-semibold text-[var(--color-primary)] transition duration-200 hover:text-[var(--color-primary-hover)]"
+          disabled={loadingComments}
+          onClick={loadMoreComments}
+          type="button"
+        >
+          {loadingComments ? '正在加载评论...' : '加载更多评论'}
+        </button>
+      ) : null}
+
       <form className="mt-3 flex gap-2" onSubmit={handleComment}>
         <input
           aria-label="写评论"
@@ -365,6 +509,14 @@ export function PostCard({
           {commenting ? <Loader2 className="animate-spin" size={17} /> : <Send size={17} />}
         </Button>
       </form>
+      <ConfirmDialog
+        busy={deleting}
+        description="确定删除这条动态吗？相关评论、点赞和图片也会一起删除。"
+        onCancel={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleDelete}
+        open={deleteConfirmOpen}
+        title="删除动态"
+      />
     </Card>
   )
 }
@@ -381,6 +533,10 @@ function CommentThread({
   onReplyTo,
   onSubmitReply,
   onToggleExpand,
+  viewerId,
+  onUpdateComment,
+  onDeleteComment,
+  highlightedCommentId,
 }: {
   comment: Comment
   replyMap: Map<string, Comment[]>
@@ -393,6 +549,10 @@ function CommentThread({
   onReplyTo: (id: string | null) => void
   onSubmitReply: (parentId: string) => Promise<void>
   onToggleExpand: () => void
+  viewerId?: string
+  onUpdateComment?: (commentId: string, body: string) => Promise<void> | void
+  onDeleteComment?: (commentId: string) => Promise<void> | void
+  highlightedCommentId?: string | null
 }) {
   const allReplies = replyMap.get(comment.id) ?? []
   const visibleReplies = isExpanded ? allReplies : allReplies.slice(0, 2)
@@ -412,6 +572,10 @@ function CommentThread({
         onSubmitReply={onSubmitReply}
         replyBody={replyBody}
         replying={replying}
+        viewerId={viewerId}
+        onUpdateComment={onUpdateComment}
+        onDeleteComment={onDeleteComment}
+        highlighted={comment.id === highlightedCommentId}
       />
 
       {showReplyList ? (
@@ -427,6 +591,10 @@ function CommentThread({
               onSubmitReply={onSubmitReply}
               replyBody={replyBody}
               replying={replying}
+              viewerId={viewerId}
+              onUpdateComment={onUpdateComment}
+              onDeleteComment={onDeleteComment}
+              highlighted={reply.id === highlightedCommentId}
             />
           ))}
 
@@ -457,6 +625,10 @@ function CommentItem({
   onReplyBodyChange,
   onReplyTo,
   onSubmitReply,
+  viewerId,
+  onUpdateComment,
+  onDeleteComment,
+  highlighted = false,
 }: {
   comment: Comment
   commentMap: Map<string, Comment>
@@ -466,15 +638,55 @@ function CommentItem({
   onReplyBodyChange: (value: string) => void
   onReplyTo: (id: string | null) => void
   onSubmitReply: (parentId: string) => Promise<void>
+  viewerId?: string
+  onUpdateComment?: (commentId: string, body: string) => Promise<void> | void
+  onDeleteComment?: (commentId: string) => Promise<void> | void
+  highlighted?: boolean
 }) {
   const parentAuthorName = comment.parentId
     ? commentMap.get(comment.parentId)?.author.displayName
     : null
 
   const isRoot = !comment.parentId
+  const [editing, setEditing] = useState(false)
+  const [editBody, setEditBody] = useState(comment.body)
+  const [saving, setSaving] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+
+  const canEdit = Boolean(viewerId && comment.authorId === viewerId && onUpdateComment)
+  const canDelete = Boolean(viewerId && comment.authorId === viewerId && onDeleteComment)
+
+  const handleSave = async () => {
+    if (!onUpdateComment || saving) return
+    const trimmed = editBody.trim()
+    if (!trimmed || trimmed === comment.body) {
+      setEditing(false)
+      return
+    }
+    setSaving(true)
+    try {
+      await onUpdateComment(comment.id, trimmed)
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!onDeleteComment) return
+    await onDeleteComment(comment.id)
+    setDeleteOpen(false)
+  }
 
   return (
-    <div className="space-y-2">
+    <div
+      className={`space-y-2 rounded-[var(--radius-sm)] transition ${
+        highlighted
+          ? 'bg-[var(--color-primary-light)] px-2 py-1 ring-2 ring-[var(--color-primary)]/30'
+          : ''
+      }`}
+      id={`comment-${comment.id}`}
+    >
       <div className={`flex ${isRoot ? 'gap-3' : 'gap-2.5'}`}>
         {!isRoot ? (
           <CornerDownRight size={14} className="mt-1 shrink-0 text-[var(--color-muted)]" />
@@ -485,27 +697,75 @@ function CommentItem({
           src={comment.author.avatarUrl}
         />
         <div className="min-w-0 flex-1">
-          <p className="break-words text-sm leading-6 text-[var(--color-text)]">
-            <span className="font-semibold">{comment.author.displayName}</span>{' '}
-            {parentAuthorName ? (
-              <span className="font-medium text-[var(--color-primary)]">@{parentAuthorName}</span>
-            ) : null}{' '}
-            {comment.body}
-          </p>
-          <div className="mt-1 flex items-center gap-3">
-            <p className="text-xs font-medium text-[var(--color-muted)]">
-              {formatRelativeTime(comment.createdAt)}
-            </p>
-            <button
-              className="text-xs font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-hover)]"
-              onClick={() => onReplyTo(isReplying ? null : comment.id)}
-              type="button"
-            >
-              {isReplying ? '取消回复' : '回复'}
-            </button>
-          </div>
+          {editing ? (
+            <div className="space-y-2">
+              <input
+                autoFocus
+                className="focus-ring w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-muted)]/60 focus:border-[var(--color-primary)] focus:shadow-[0_0_0_3px_rgba(45,106,79,0.12)]"
+                onChange={(e) => setEditBody(e.target.value)}
+                value={editBody}
+              />
+              <div className="flex gap-2">
+                <Button disabled={saving} onClick={handleSave} size="sm" variant="primary">
+                  {saving ? <Loader2 className="animate-spin" size={12} /> : '保存'}
+                </Button>
+                <Button
+                  disabled={saving}
+                  onClick={() => {
+                    setEditing(false)
+                    setEditBody(comment.body)
+                  }}
+                  size="sm"
+                  variant="subtle"
+                >
+                  取消
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="break-words text-sm leading-6 text-[var(--color-text)]">
+                <span className="font-semibold">{comment.author.displayName}</span>{' '}
+                {parentAuthorName ? (
+                  <span className="font-medium text-[var(--color-primary)]">@{parentAuthorName}</span>
+                ) : null}{' '}
+                {comment.body}
+              </p>
+              <div className="mt-1 flex items-center gap-3">
+                <p className="text-xs font-medium text-[var(--color-muted)]">
+                  {formatRelativeTime(comment.createdAt)}
+                </p>
+                <button
+                  className="text-xs font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-hover)]"
+                  onClick={() => onReplyTo(isReplying ? null : comment.id)}
+                  type="button"
+                >
+                  {isReplying ? '取消回复' : '回复'}
+                </button>
+                {(canEdit || canDelete) && (
+                  <CommentActionsMenu
+                    canDelete={canDelete}
+                    canEdit={canEdit}
+                    onDelete={() => setDeleteOpen(true)}
+                    onEdit={() => {
+                      setEditBody(comment.body)
+                      setEditing(true)
+                    }}
+                  />
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
+      <ConfirmDialog
+        busy={false}
+        description="确定删除这条评论吗？"
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={handleDelete}
+        open={deleteOpen}
+        title="删除评论"
+      />
 
       {isReplying ? (
         <div className="flex gap-2 pl-2">

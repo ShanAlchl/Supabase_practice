@@ -17,7 +17,7 @@ export function FeedSearchBar({ value, onChange, disabled = false }: FeedSearchB
         disabled={disabled}
         icon={<Search size={18} />}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="搜索这个圈子的动态"
+        placeholder="搜索动态正文"
         value={value}
       />
       {value ? (

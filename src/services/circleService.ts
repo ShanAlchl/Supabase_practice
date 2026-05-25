@@ -97,6 +97,21 @@ export const updateCircle = async (
   return toCircle(data as CircleRow)
 }
 
+export const transferCircleOwnership = async (circleId: string, userId: string) => {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.')
+  }
+
+  const { error } = await supabase.rpc('transfer_circle_ownership', {
+    target_circle_id: circleId,
+    target_user_id: userId,
+  })
+
+  if (error) {
+    throw error
+  }
+}
+
 export const removeCircleMember = async (circleId: string, userId: string) => {
   if (!supabase) {
     throw new Error('Supabase is not configured.')
@@ -117,19 +132,9 @@ export const leaveCircle = async (circleId: string) => {
     throw new Error('Supabase is not configured.')
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    throw new Error('Not authenticated.')
-  }
-
-  const { error } = await supabase
-    .from('circle_members')
-    .delete()
-    .eq('circle_id', circleId)
-    .eq('user_id', user.id)
+  const { error } = await supabase.rpc('leave_circle', {
+    target_circle_id: circleId,
+  })
 
   if (error) {
     throw error

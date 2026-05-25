@@ -85,7 +85,13 @@ create table if not exists public.notifications (
   recipient_id uuid not null references public.profiles(id) on delete cascade,
   actor_id uuid not null references public.profiles(id) on delete cascade,
   type text not null check (
-    type in ('post_reacted', 'post_commented', 'member_joined', 'invite_accepted')
+    type in (
+      'post_reacted',
+      'post_commented',
+      'comment_replied',
+      'member_joined',
+      'invite_accepted'
+    )
   ),
   post_id uuid references public.posts(id) on delete cascade,
   comment_id uuid references public.comments(id) on delete cascade,
@@ -98,6 +104,21 @@ alter table public.comments
 
 alter table public.circles
   add column if not exists updated_at timestamptz not null default now();
+
+alter table public.notifications
+  drop constraint if exists notifications_type_check;
+
+alter table public.notifications
+  add constraint notifications_type_check
+  check (
+    type in (
+      'post_reacted',
+      'post_commented',
+      'comment_replied',
+      'member_joined',
+      'invite_accepted'
+    )
+  );
 
 create index if not exists circle_members_user_id_idx
   on public.circle_members(user_id);
@@ -132,6 +153,14 @@ create index if not exists reactions_circle_user_idx
 create index if not exists reactions_post_user_idx
   on public.reactions(post_id, user_id);
 
+create extension if not exists pg_trgm;
+
+create index if not exists posts_body_trgm_idx
+  on public.posts using gin (body gin_trgm_ops);
+
+create index if not exists comments_body_trgm_idx
+  on public.comments using gin (body gin_trgm_ops);
+
 create index if not exists circle_members_circle_role_idx
   on public.circle_members(circle_id, role);
 
@@ -146,6 +175,64 @@ create index if not exists notifications_recipient_created_idx
 
 create index if not exists notifications_recipient_unread_idx
   on public.notifications(recipient_id, read_at, created_at desc);
+
+with ranked as (
+  select
+    id,
+    row_number() over (
+      partition by recipient_id, actor_id, type, post_id
+      order by created_at desc, id desc
+    ) as rn
+  from public.notifications
+  where type = 'post_reacted' and post_id is not null
+)
+delete from public.notifications n
+using ranked r
+where n.id = r.id and r.rn > 1;
+
+with ranked as (
+  select
+    id,
+    row_number() over (
+      partition by recipient_id, actor_id, type, comment_id
+      order by created_at desc, id desc
+    ) as rn
+  from public.notifications
+  where type in ('post_commented', 'comment_replied') and comment_id is not null
+)
+delete from public.notifications n
+using ranked r
+where n.id = r.id and r.rn > 1;
+
+with ranked as (
+  select
+    id,
+    row_number() over (
+      partition by recipient_id, actor_id, type, circle_id
+      order by created_at desc, id desc
+    ) as rn
+  from public.notifications
+  where type in ('member_joined', 'invite_accepted')
+)
+delete from public.notifications n
+using ranked r
+where n.id = r.id and r.rn > 1;
+
+create unique index if not exists notifications_reaction_unique_idx
+  on public.notifications(recipient_id, actor_id, type, post_id)
+  where type = 'post_reacted' and post_id is not null;
+
+create unique index if not exists notifications_comment_unique_idx
+  on public.notifications(recipient_id, actor_id, type, comment_id)
+  where type in ('post_commented', 'comment_replied') and comment_id is not null;
+
+create unique index if not exists notifications_member_joined_unique_idx
+  on public.notifications(recipient_id, actor_id, type, circle_id)
+  where type = 'member_joined';
+
+create unique index if not exists notifications_invite_accepted_unique_idx
+  on public.notifications(recipient_id, actor_id, type, circle_id)
+  where type = 'invite_accepted';
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -410,9 +497,19 @@ as $$
   where p.circle_id = target_circle_id
     and (select public.is_circle_member(target_circle_id))
     and (
-      before_created_at is null
-      or before_id is null
-      or (p.created_at, p.id) < (before_created_at, before_id)
+      (
+        before_created_at is null
+        and before_id is null
+        and p.pinned_at is not null
+      )
+      or (
+        p.pinned_at is null
+        and (
+          before_created_at is null
+          or before_id is null
+          or (p.created_at, p.id) < (before_created_at, before_id)
+        )
+      )
     )
   order by
     case when p.pinned_at is not null then 0 else 1 end,
@@ -422,6 +519,80 @@ as $$
 $$;
 
 grant execute on function public.get_feed_posts(uuid, timestamptz, uuid, int) to authenticated;
+
+create or replace function public.get_feed_post_by_id(
+  target_post_id uuid
+)
+returns table (
+  id uuid,
+  circle_id uuid,
+  author_id uuid,
+  body text,
+  created_at timestamptz,
+  updated_at timestamptz,
+  pinned_at timestamptz,
+  author jsonb,
+  images jsonb,
+  comment_count bigint,
+  reaction_count bigint,
+  viewer_has_reacted boolean
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    p.id,
+    p.circle_id,
+    p.author_id,
+    p.body,
+    p.created_at,
+    p.updated_at,
+    p.pinned_at,
+    jsonb_build_object(
+      'id', pr.id,
+      'display_name', pr.display_name,
+      'avatar_url', pr.avatar_url,
+      'bio', pr.bio
+    ) as author,
+    coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'id', pi.id,
+          'post_id', pi.post_id,
+          'public_url', pi.public_url,
+          'storage_path', pi.storage_path,
+          'sort_order', pi.sort_order
+        )
+        order by pi.sort_order asc
+      )
+      from public.post_images pi
+      where pi.post_id = p.id
+    ), '[]'::jsonb) as images,
+    (
+      select count(*)
+      from public.comments c
+      where c.post_id = p.id and c.parent_id is null
+    ) as comment_count,
+    (
+      select count(*)
+      from public.reactions r
+      where r.post_id = p.id
+    ) as reaction_count,
+    exists (
+      select 1
+      from public.reactions vr
+      where vr.post_id = p.id
+        and vr.user_id = (select auth.uid())
+    ) as viewer_has_reacted
+  from public.posts p
+  join public.profiles pr on pr.id = p.author_id
+  where p.id = target_post_id
+    and (select public.is_circle_member(p.circle_id));
+$$;
+
+grant execute on function public.get_feed_post_by_id(uuid) to authenticated;
 
 create or replace function public.toggle_pin_post(
   target_post_id uuid,
@@ -450,6 +621,63 @@ $$;
 
 grant execute on function public.toggle_pin_post(uuid, uuid) to authenticated;
 
+create or replace function public.get_circle_album_images(
+  target_circle_id uuid,
+  before_created_at timestamptz default null,
+  before_id uuid default null,
+  page_size int default 30
+)
+returns table (
+  id uuid,
+  post_id uuid,
+  circle_id uuid,
+  author_id uuid,
+  storage_path text,
+  public_url text,
+  sort_order int,
+  post_body text,
+  post_created_at timestamptz,
+  author jsonb
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    pi.id,
+    pi.post_id,
+    p.circle_id,
+    p.author_id,
+    pi.storage_path,
+    pi.public_url,
+    pi.sort_order,
+    p.body as post_body,
+    p.created_at as post_created_at,
+    jsonb_build_object(
+      'id', pr.id,
+      'display_name', pr.display_name,
+      'avatar_url', pr.avatar_url,
+      'bio', pr.bio
+    ) as author
+  from public.post_images pi
+  join public.posts p on p.id = pi.post_id
+  join public.profiles pr on pr.id = p.author_id
+  where p.circle_id = target_circle_id
+    and (select public.is_circle_member(target_circle_id))
+    and (
+      before_created_at is null
+      or before_id is null
+      or (p.created_at, pi.id) < (before_created_at, before_id)
+    )
+  order by p.created_at desc, pi.id desc
+  limit least(greatest(coalesce(page_size, 30), 1), 50);
+$$;
+
+grant execute on function public.get_circle_album_images(uuid, timestamptz, uuid, int) to authenticated;
+
+drop function if exists public.search_circle_posts(uuid, text, timestamptz, uuid, int);
+
 create or replace function public.search_circle_posts(
   target_circle_id uuid,
   keyword text,
@@ -464,6 +692,7 @@ returns table (
   body text,
   created_at timestamptz,
   updated_at timestamptz,
+  pinned_at timestamptz,
   author jsonb,
   images jsonb,
   comment_count bigint,
@@ -482,6 +711,7 @@ as $$
     p.body,
     p.created_at,
     p.updated_at,
+    p.pinned_at,
     jsonb_build_object(
       'id', pr.id,
       'display_name', pr.display_name,
@@ -505,7 +735,7 @@ as $$
     (
       select count(*)
       from public.comments c
-      where c.post_id = p.id
+      where c.post_id = p.id and c.parent_id is null
     ) as comment_count,
     (
       select count(*)
@@ -523,13 +753,34 @@ as $$
   where p.circle_id = target_circle_id
     and (select public.is_circle_member(target_circle_id))
     and nullif(trim(keyword), '') is not null
-    and p.body ilike '%' || trim(keyword) || '%'
     and (
-      before_created_at is null
-      or before_id is null
-      or (p.created_at, p.id) < (before_created_at, before_id)
+      p.body ilike '%' || trim(keyword) || '%'
+      or exists (
+        select 1
+        from public.comments c
+        where c.post_id = p.id
+          and c.body ilike '%' || trim(keyword) || '%'
+      )
     )
-  order by p.created_at desc, p.id desc
+    and (
+      (
+        before_created_at is null
+        and before_id is null
+        and p.pinned_at is not null
+      )
+      or (
+        p.pinned_at is null
+        and (
+          before_created_at is null
+          or before_id is null
+          or (p.created_at, p.id) < (before_created_at, before_id)
+        )
+      )
+    )
+  order by
+    case when p.pinned_at is not null then 0 else 1 end,
+    p.pinned_at asc nulls last,
+    p.created_at desc, p.id desc
   limit least(greatest(coalesce(page_size, 20), 1), 50);
 $$;
 
@@ -698,6 +949,56 @@ $$;
 
 grant execute on function public.revoke_circle_invite(uuid) to authenticated;
 
+create or replace function public.transfer_circle_ownership(
+  target_circle_id uuid,
+  target_user_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := (select auth.uid());
+  target_member_exists boolean;
+begin
+  if current_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if not exists (
+    select 1 from public.circle_members
+    where circle_id = target_circle_id
+      and user_id = current_user_id
+      and role = 'owner'
+  ) then
+    raise exception 'Only circle owner can transfer ownership.';
+  end if;
+
+  select exists (
+    select 1 from public.circle_members
+    where circle_id = target_circle_id
+      and user_id = target_user_id
+  ) into target_member_exists;
+
+  if not target_member_exists then
+    raise exception 'Target user is not a member of this circle.';
+  end if;
+
+  update public.circle_members
+  set role = 'member'
+  where circle_id = target_circle_id
+    and user_id = current_user_id;
+
+  update public.circle_members
+  set role = 'owner'
+  where circle_id = target_circle_id
+    and user_id = target_user_id;
+end;
+$$;
+
+grant execute on function public.transfer_circle_ownership(uuid, uuid) to authenticated;
+
 create or replace function public.remove_circle_member(
   target_circle_id uuid,
   target_user_id uuid
@@ -746,6 +1047,47 @@ $$;
 
 grant execute on function public.remove_circle_member(uuid, uuid) to authenticated;
 
+create or replace function public.leave_circle(target_circle_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := (select auth.uid());
+  current_role text;
+  owner_count int;
+begin
+  if current_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select role into current_role
+  from public.circle_members
+  where circle_id = target_circle_id
+    and user_id = current_user_id;
+
+  if current_role is null then
+    raise exception 'Member not found';
+  end if;
+
+  select count(*) into owner_count
+  from public.circle_members
+  where circle_id = target_circle_id
+    and role = 'owner';
+
+  if current_role = 'owner' and owner_count <= 1 then
+    raise exception 'Cannot leave as the last circle owner';
+  end if;
+
+  delete from public.circle_members
+  where circle_id = target_circle_id
+    and user_id = current_user_id;
+end;
+$$;
+
+grant execute on function public.leave_circle(uuid) to authenticated;
+
 create or replace function public.mark_notification_read(notification_id uuid)
 returns public.notifications
 language plpgsql
@@ -792,6 +1134,26 @@ $$;
 
 grant execute on function public.mark_all_notifications_read() to authenticated;
 
+create or replace function public.delete_all_read_notifications()
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  deleted_count int;
+begin
+  delete from public.notifications
+  where recipient_id = (select auth.uid())
+    and read_at is not null;
+
+  get diagnostics deleted_count = row_count;
+  return deleted_count;
+end;
+$$;
+
+grant execute on function public.delete_all_read_notifications() to authenticated;
+
 create or replace function public.notify_post_reacted()
 returns trigger
 language plpgsql
@@ -819,7 +1181,12 @@ begin
       new.user_id,
       'post_reacted',
       new.post_id
-    );
+    )
+    on conflict (recipient_id, actor_id, type, post_id)
+    where type = 'post_reacted' and post_id is not null
+    do update
+      set read_at = null,
+          created_at = now();
   end if;
 
   return new;
@@ -839,10 +1206,17 @@ set search_path = public
 as $$
 declare
   post_author_id uuid;
+  parent_author_id uuid;
 begin
   select p.author_id into post_author_id
   from public.posts p
   where p.id = new.post_id;
+
+  if new.parent_id is not null then
+    select c.author_id into parent_author_id
+    from public.comments c
+    where c.id = new.parent_id;
+  end if;
 
   if post_author_id is not null and post_author_id <> new.author_id then
     insert into public.notifications (
@@ -860,7 +1234,35 @@ begin
       'post_commented',
       new.post_id,
       new.id
-    );
+    )
+    on conflict (recipient_id, actor_id, type, comment_id)
+    where type in ('post_commented', 'comment_replied') and comment_id is not null
+    do nothing;
+  end if;
+
+  if parent_author_id is not null
+    and parent_author_id <> new.author_id
+    and parent_author_id <> post_author_id
+  then
+    insert into public.notifications (
+      circle_id,
+      recipient_id,
+      actor_id,
+      type,
+      post_id,
+      comment_id
+    )
+    values (
+      new.circle_id,
+      parent_author_id,
+      new.author_id,
+      'comment_replied',
+      new.post_id,
+      new.id
+    )
+    on conflict (recipient_id, actor_id, type, comment_id)
+    where type in ('post_commented', 'comment_replied') and comment_id is not null
+    do nothing;
   end if;
 
   return new;

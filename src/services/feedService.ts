@@ -242,6 +242,26 @@ export const createPost = async (input: CreatePostInput) => {
   return postId
 }
 
+export const updatePost = async (postId: string, body: string) => {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.')
+  }
+
+  const trimmed = body.trim()
+  if (!trimmed) {
+    throw new Error('动态内容不能为空。')
+  }
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ body: trimmed })
+    .eq('id', postId)
+
+  if (error) {
+    throw error
+  }
+}
+
 export const deletePost = async (postId: string) => {
   if (!supabase) {
     throw new Error('Supabase is not configured.')
@@ -290,6 +310,31 @@ export const togglePinPost = async (postId: string, circleId: string) => {
   if (error) {
     throw error
   }
+}
+
+export const fetchPostById = async (
+  postId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _viewerId: string,
+): Promise<Post> => {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.')
+  }
+
+  const { data, error } = await supabase.rpc('get_feed_post_by_id', {
+    target_post_id: postId,
+  })
+
+  if (error) {
+    throw error
+  }
+
+  if (!data || (Array.isArray(data) && data.length === 0)) {
+    throw new Error('这条动态可能已被删除或你已无法访问。')
+  }
+
+  const row = Array.isArray(data) ? data[0] : data
+  return toPost(row as FeedPostRow)
 }
 
 export const toggleReaction = async (
