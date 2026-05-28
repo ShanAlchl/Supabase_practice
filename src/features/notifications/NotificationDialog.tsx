@@ -57,8 +57,8 @@ export function NotificationDialog({
   const readCount = notifications.length - unreadCount
 
   return (
-    <Dialog className="max-w-xl" onClose={onClose} open={open} title="通知">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <Dialog className="max-w-xl" onClose={onClose} open={open}>
+      <div className="mb-4 flex items-center justify-between gap-3 pr-10">
         <Badge tone={unreadCount > 0 ? 'primary' : 'neutral'}>{unreadCount} 条未读</Badge>
         <div className="flex items-center gap-2">
           {onDeleteAllRead ? (

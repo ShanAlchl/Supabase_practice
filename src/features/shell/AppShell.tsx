@@ -45,10 +45,15 @@ type AppShellProps = {
   children: ReactNode
 }
 
-const navItems: NavItem[] = [
+const leftNavItems: NavItem[] = [
   { key: 'feed', label: '动态', icon: Home },
-  { key: 'members', label: '成员', icon: UsersRound },
   { key: 'album', label: '相册', icon: Camera },
+]
+
+const mobileNavItems: NavItem[] = [
+  { key: 'feed', label: '动态', icon: Home },
+  { key: 'album', label: '相册', icon: Camera },
+  { key: 'members', label: '成员', icon: UsersRound },
   { key: 'notifications', label: '通知', icon: Bell },
   { key: 'settings', label: '设置', icon: Settings },
 ]
@@ -89,10 +94,6 @@ export function AppShell({
       onOpenNotifications?.()
       return
     }
-    if (panel === 'settings') {
-      onOpenSettings?.()
-      return
-    }
     document.getElementById(panel)?.scrollIntoView({
       behavior: 'smooth',
       block: panel === 'feed' ? 'start' : 'center',
@@ -104,6 +105,7 @@ export function AppShell({
       <MobileHeader
         circleName={circle.name}
         notificationCount={notificationCount}
+        onOpenMembers={onOpenMembers}
         onOpenNotifications={onOpenNotifications}
       />
 
@@ -112,7 +114,6 @@ export function AppShell({
           activePanel={activePanel}
           circle={circle}
           isDemo={isDemo}
-          notificationCount={notificationCount}
           onCompose={onCompose}
           onMove={moveToPanel}
           onOpenProfile={onOpenProfile}
@@ -129,6 +130,9 @@ export function AppShell({
           circle={circle}
           isDemo={isDemo}
           members={members}
+          notificationCount={notificationCount}
+          onOpenMembers={onOpenMembers}
+          onOpenNotifications={onOpenNotifications}
           onOpenSettings={onOpenSettings}
           tools={rightRailTools}
         />
@@ -136,7 +140,6 @@ export function AppShell({
 
       <MobileNavigation
         activePanel={activePanel}
-        notificationCount={notificationCount}
         onCompose={onCompose}
         onMove={moveToPanel}
       />
@@ -148,10 +151,12 @@ function MobileHeader({
   circleName,
   notificationCount,
   onOpenNotifications,
+  onOpenMembers,
 }: {
   circleName: string
   notificationCount: number
   onOpenNotifications?: () => void
+  onOpenMembers?: () => void
 }) {
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-page)]/80 px-5 py-3.5 backdrop-blur-xl lg:hidden">
@@ -163,6 +168,14 @@ function MobileHeader({
           <h1 className="text-lg font-bold text-[var(--color-text)]">{circleName}</h1>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            aria-label="查看成员"
+            className="focus-ring relative inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-muted)] transition duration-200 hover:bg-[var(--color-surface)]"
+            onClick={onOpenMembers}
+            type="button"
+          >
+            <UsersRound size={20} />
+          </button>
           <NotificationButton count={notificationCount} onClick={onOpenNotifications} />
         </div>
       </div>
@@ -174,7 +187,6 @@ function LeftRail({
   activePanel,
   circle,
   isDemo,
-  notificationCount,
   onCompose,
   onMove,
   onOpenProfile,
@@ -185,7 +197,6 @@ function LeftRail({
   activePanel: PanelKey
   circle: Circle
   isDemo: boolean
-  notificationCount: number
   onCompose: () => void
   onMove: (panel: PanelKey, disabled?: boolean) => void
   onOpenProfile?: () => void
@@ -215,7 +226,7 @@ function LeftRail({
           </Button>
 
           <nav className="space-y-1.5" aria-label="主导航">
-            {navItems.map((item) => {
+            {leftNavItems.map((item) => {
               const Icon = item.icon
               const selected = activePanel === item.key
               return (
@@ -236,9 +247,7 @@ function LeftRail({
                     <Icon size={18} />
                     {item.label}
                   </span>
-                  {item.key === 'notifications' && notificationCount > 0 ? (
-                    <Badge tone="primary">{notificationCount}</Badge>
-                  ) : item.disabled ? (
+                  {item.disabled ? (
                     <span className="text-[11px] font-medium text-slate-400">稍后</span>
                   ) : null}
                 </button>
@@ -282,12 +291,18 @@ function RightRail({
   circle,
   isDemo,
   members,
+  notificationCount = 0,
+  onOpenMembers,
+  onOpenNotifications,
   onOpenSettings,
   tools,
 }: {
   circle: Circle
   isDemo: boolean
   members: CircleMember[]
+  notificationCount?: number
+  onOpenMembers?: () => void
+  onOpenNotifications?: () => void
   onOpenSettings?: () => void
   tools?: ReactNode
 }) {
@@ -295,6 +310,61 @@ function RightRail({
     <aside className="hidden h-full space-y-4 overflow-auto pb-2 xl:block quiet-scrollbar">
       {tools}
 
+      {/* Members */}
+      <Card className="p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-[var(--color-text)]">成员</h3>
+          {onOpenMembers ? (
+            <button
+              className="text-xs font-medium text-[var(--color-primary)] hover:underline"
+              onClick={onOpenMembers}
+              type="button"
+            >
+              查看全部
+            </button>
+          ) : null}
+        </div>
+        <div className="flex items-center">
+          <div className="flex -space-x-2">
+            {members.slice(0, 5).map((m) => (
+              <div key={m.userId} className="relative inline-block rounded-full ring-2 ring-white">
+                <Avatar
+                  name={m.profile.displayName}
+                  size="sm"
+                  src={m.profile.avatarUrl}
+                />
+              </div>
+            ))}
+          </div>
+          {members.length > 5 ? (
+            <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-muted)]">
+              +{members.length - 5}
+            </div>
+          ) : null}
+        </div>
+        <p className="mt-2 text-xs text-[var(--color-muted)]">{members.length} 位成员</p>
+      </Card>
+
+      {/* Notifications */}
+      {onOpenNotifications ? (
+        <Card className="overflow-hidden p-0">
+          <button
+            className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-[var(--color-surface)]"
+            onClick={onOpenNotifications}
+            type="button"
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+              <Bell size={16} />
+              通知
+            </span>
+            {notificationCount > 0 ? (
+              <Badge tone="primary">{notificationCount}</Badge>
+            ) : null}
+          </button>
+        </Card>
+      ) : null}
+
+      {/* Circle Info */}
       <Card className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -308,7 +378,6 @@ function RightRail({
           设置
         </Button>
       </Card>
-
     </aside>
   )
 }
@@ -339,16 +408,14 @@ function NotificationButton({
 
 function MobileNavigation({
   activePanel,
-  notificationCount,
   onCompose,
   onMove,
 }: {
   activePanel: PanelKey
-  notificationCount: number
   onCompose: () => void
   onMove: (panel: PanelKey, disabled?: boolean) => void
 }) {
-  const mobileItems = navItems.filter((item) =>
+  const mobileItems = mobileNavItems.filter((item) =>
     ['feed', 'album', 'settings'].includes(item.key),
   )
 
@@ -364,7 +431,7 @@ function MobileNavigation({
         <Plus size={24} strokeWidth={2.5} />
       </Button>
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-border)] bg-white/95 px-3 py-2 backdrop-blur lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-4 gap-1 text-xs font-semibold">
+        <div className="mx-auto grid max-w-md grid-cols-3 gap-1 text-xs font-semibold">
           {mobileItems.map((item) => {
             const Icon = item.icon
             const selected = activePanel === item.key
@@ -383,9 +450,6 @@ function MobileNavigation({
                 type="button"
               >
                 <Icon size={20} strokeWidth={selected ? 2.5 : 2} />
-                {item.key === 'notifications' && notificationCount > 0 ? (
-                  <span className="absolute right-5 top-1 h-2 w-2 rounded-full bg-[var(--color-rose)]" />
-                ) : null}
                 <span>{item.label}</span>
               </button>
             )

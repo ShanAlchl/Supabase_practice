@@ -27,7 +27,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from '../../services/notificationService'
-import { updateAvatar, updateProfile } from '../../services/profileService'
+import { deleteAccount, updateAvatar, updateProfile } from '../../services/profileService'
 import type { CircleNotification, FeedCursor, PaginatedResult, Post, SessionUser } from '../../types/domain'
 
 type PostsQueryKey = ReturnType<typeof queryKeys.posts>
@@ -41,7 +41,6 @@ type NotificationsInfiniteData = InfiniteData<
 type UsePrivateCircleMutationsInput = {
   circleId: string | null
   postsQueryKey: PostsQueryKey
-  setSearchTerm: (value: string) => void
   setSelectedCircleId: (value: string | null) => void
   user: SessionUser
 }
@@ -49,7 +48,6 @@ type UsePrivateCircleMutationsInput = {
 export const usePrivateCircleMutations = ({
   circleId,
   postsQueryKey,
-  setSearchTerm,
   setSelectedCircleId,
   user,
 }: UsePrivateCircleMutationsInput) => {
@@ -136,7 +134,6 @@ export const usePrivateCircleMutations = ({
     mutationFn: acceptCircleInvite,
     onSuccess: ({ circle: joinedCircle }) => {
       setSelectedCircleId(joinedCircle.id)
-      setSearchTerm('')
       queryClient.invalidateQueries({ queryKey: queryKeys.circles(user.id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.members(joinedCircle.id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.postsRoot(joinedCircle.id) })
@@ -274,11 +271,19 @@ export const usePrivateCircleMutations = ({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.postsRoot(circleId) }),
   })
 
+  const deleteAccountMutation = useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: () => {
+      queryClient.clear()
+    },
+  })
+
   return {
     commentMutation,
     createCircleMutation,
     createInviteMutation,
     createPostMutation,
+    deleteAccountMutation,
     deleteCommentMutation,
     deletePostMutation,
     joinCircleMutation,

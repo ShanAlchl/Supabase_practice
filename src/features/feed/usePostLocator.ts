@@ -156,5 +156,7 @@ export const usePostLocator = ({
     error,
     setError,
     clearHighlight,
+    highlight,
+    scrollToPost,
   }
 }

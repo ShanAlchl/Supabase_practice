@@ -30,20 +30,15 @@ export function ComposeDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-stone-950/30 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4">
       <Card
+        aria-label="发布动态"
         aria-modal="true"
         className="h-[100svh] w-full overflow-auto rounded-none p-5 sm:h-auto sm:max-h-[calc(100svh-2rem)] sm:max-w-4xl sm:rounded-[var(--radius-lg)] sm:p-6"
         role="dialog"
-        aria-labelledby="compose-dialog-title"
       >
         <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 id="compose-dialog-title" className="text-base font-semibold text-[var(--color-text)]">
-              发布动态
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
-              只分享给当前圈子的成员。
-            </p>
-          </div>
+          <p className="text-sm text-[var(--color-muted)]">
+            只分享给当前圈子的成员。
+          </p>
           <Button aria-label="关闭发布动态" onClick={onClose} size="icon" variant="ghost">
             <X size={18} />
           </Button>

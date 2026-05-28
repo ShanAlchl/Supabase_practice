@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 
 export const useAuth = () => {
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(Boolean(supabase))
 
@@ -18,7 +19,13 @@ export const useAuth = () => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true)
+      } else if (event === 'SIGNED_OUT') {
+        setIsPasswordRecovery(false)
+      }
+
       setSession(nextSession)
       setLoading(false)
     })
@@ -27,6 +34,7 @@ export const useAuth = () => {
   }, [])
 
   return {
+    isPasswordRecovery,
     session,
     user: session?.user ?? null,
     loading,

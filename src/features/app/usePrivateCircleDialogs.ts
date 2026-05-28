@@ -1,22 +1,21 @@
 import { useState } from 'react'
 
+export type SettingsTab = 'profile' | 'circle'
+
 export const usePrivateCircleDialogs = () => {
-  const [inviteOpen, setInviteOpen] = useState(false)
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
-  const [circleSettingsOpen, setCircleSettingsOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('profile')
 
   return {
-    circleSettingsOpen,
-    inviteOpen,
     membersOpen,
     notificationsOpen,
-    profileOpen,
-    setCircleSettingsOpen,
-    setInviteOpen,
     setMembersOpen,
     setNotificationsOpen,
-    setProfileOpen,
+    settingsOpen,
+    setSettingsOpen,
+    settingsTab,
+    setSettingsTab,
   }
 }

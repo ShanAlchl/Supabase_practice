@@ -1728,3 +1728,54 @@ begin
   end if;
 end;
 $$;
+
+-- ============================================================
+-- Account deletion
+-- ============================================================
+
+create or replace function public.delete_user_account()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  owned_circle_id uuid;
+begin
+  if current_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  -- check if user is the sole owner of any circle
+  for owned_circle_id in
+    select cm.circle_id
+    from public.circle_members cm
+    where cm.user_id = current_user_id
+      and cm.role = 'owner'
+      and not exists (
+        select 1 from public.circle_members cm2
+        where cm2.circle_id = cm.circle_id
+          and cm2.user_id != current_user_id
+          and cm2.role = 'owner'
+      )
+  loop
+    raise exception 'You are the sole owner of circle %. Please transfer ownership before deleting your account.', owned_circle_id;
+  end loop;
+
+  -- delete user data in reverse dependency order
+  delete from public.reactions where author_id = current_user_id;
+  delete from public.comments where author_id = current_user_id;
+  delete from public.post_images where post_id in (select id from public.posts where author_id = current_user_id);
+  delete from public.posts where author_id = current_user_id;
+  delete from public.circle_invites where created_by = current_user_id;
+  delete from public.circle_members where user_id = current_user_id;
+  delete from public.notifications where user_id = current_user_id or actor_id = current_user_id;
+  delete from public.profiles where id = current_user_id;
+
+  -- delete auth user
+  delete from auth.users where id = current_user_id;
+end;
+$$;
+
+grant execute on function public.delete_user_account() to authenticated;

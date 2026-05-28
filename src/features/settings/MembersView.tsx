@@ -1,18 +1,19 @@
 import type { CircleMember } from '../../types/domain'
 import { Avatar } from '../../components/ui/Avatar'
 import { Badge } from '../../components/ui/Badge'
-import { Dialog } from '../../components/ui/Dialog'
 
-type MembersDialogProps = {
-  open: boolean
+type MembersViewProps = {
   members: CircleMember[]
-  onClose: () => void
 }
 
-export function MembersDialog({ open, members, onClose }: MembersDialogProps) {
+export function MembersView({ members }: MembersViewProps) {
   return (
-    <Dialog className="max-w-lg" onClose={onClose} open={open}>
-      <p className="mb-4 text-sm text-[var(--color-muted)]">共 {members.length} 位成员</p>
+    <div className="mx-auto max-w-2xl">
+      <h1 className="mb-5 text-xl font-bold text-[var(--color-text)] lg:hidden">成员</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-[var(--color-text)]">圈子成员</h2>
+        <p className="text-sm text-[var(--color-muted)]">共 {members.length} 位</p>
+      </div>
       <div className="space-y-3">
         {members.map((member) => (
           <div
@@ -25,9 +26,7 @@ export function MembersDialog({ open, members, onClose }: MembersDialogProps) {
               src={member.profile.avatarUrl}
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">
-                {member.profile.displayName}
-              </p>
+              <p className="truncate text-sm font-semibold">{member.profile.displayName}</p>
               <p className="text-xs text-[var(--color-muted)]">
                 {member.profile.bio ?? (member.role === 'owner' ? '圈主' : '成员')}
               </p>
@@ -38,6 +37,6 @@ export function MembersDialog({ open, members, onClose }: MembersDialogProps) {
           </div>
         ))}
       </div>
-    </Dialog>
+    </div>
   )
 }

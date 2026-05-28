@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { queryKeys } from '../../lib/queryKeys'
 import { fetchComments } from '../../services/commentService'
 import { listCircles } from '../../services/circleService'
-import { fetchPostsPage, searchPosts } from '../../services/feedService'
+import { fetchPostsPage } from '../../services/feedService'
 import { listCircleInvites } from '../../services/inviteService'
 import { fetchNotifications, subscribeNotifications } from '../../services/notificationService'
 import {
@@ -15,15 +15,11 @@ import type { Post, SessionUser } from '../../types/domain'
 import type { Comment, FeedCursor, PaginatedResult } from '../../types/domain'
 
 type UsePrivateCircleQueriesInput = {
-  inviteOpen: boolean
-  searchTerm: string
   selectedCircleId: string | null
   user: SessionUser
 }
 
 export const usePrivateCircleQueries = ({
-  inviteOpen,
-  searchTerm,
   selectedCircleId,
   user,
 }: UsePrivateCircleQueriesInput) => {
@@ -53,7 +49,7 @@ export const usePrivateCircleQueries = ({
       : []
   const circleId = selectedCircleId ?? circleQuery.data?.id ?? null
   const circle = circles.find((item) => item.id === circleId) ?? circleQuery.data ?? null
-  const postsQueryKey = queryKeys.posts(circleId, searchTerm)
+  const postsQueryKey = queryKeys.posts(circleId)
 
   useEffect(() => {
     return subscribeNotifications(user.id, () => {
@@ -70,12 +66,6 @@ export const usePrivateCircleQueries = ({
   const postsQuery = useInfiniteQuery({
     queryKey: postsQueryKey,
     queryFn: async ({ pageParam }) => {
-      if (searchTerm.trim()) {
-        return searchPosts(circleId!, searchTerm.trim(), user.id, {
-          cursor: pageParam,
-          limit: 30,
-        })
-      }
       return fetchPostsPage(circleId!, user.id, { cursor: pageParam, limit: 30 })
     },
     enabled: Boolean(circleId),
@@ -86,7 +76,7 @@ export const usePrivateCircleQueries = ({
   const invitesQuery = useQuery({
     queryKey: queryKeys.invites(circleId),
     queryFn: () => listCircleInvites(circleId!),
-    enabled: Boolean(circleId) && inviteOpen,
+    enabled: Boolean(circleId),
   })
 
   const notificationsQuery = useInfiniteQuery({

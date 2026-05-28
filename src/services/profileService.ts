@@ -173,3 +173,14 @@ export const updateAvatar = async (userId: string, file: File) => {
 
   return toProfile(data)
 }
+
+export const deleteAccount = async () => {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.')
+  }
+
+  const { error } = await supabase.rpc('delete_user_account')
+  if (error) {
+    throw error
+  }
+}

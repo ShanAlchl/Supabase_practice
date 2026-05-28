@@ -1,7 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Lock, Mail, Sparkles } from 'lucide-react'
-import { signInWithEmail, signUpWithEmail, sendPasswordReset } from '../../services/authService'
+import { KeyRound, Lock, Mail, Sparkles } from 'lucide-react'
+import {
+  completePasswordReset,
+  requestPasswordResetCode,
+  signInWithEmail,
+  signUpWithEmail,
+  verifyPasswordResetCode,
+} from '../../services/authService'
 import { getErrorMessage } from '../../lib/errors'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -14,18 +20,48 @@ export function AuthPanel() {
   const [mode, setMode] = useState<AuthMode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState('')
   const [messageTone, setMessageTone] = useState<'success' | 'error'>('success')
+  const [resetCodeVerified, setResetCodeVerified] = useState(false)
+  const [resetCodeSent, setResetCodeSent] = useState(false)
+  const [resetCooldown, setResetCooldown] = useState(0)
+  const [resetToken, setResetToken] = useState('')
   const [busy, setBusy] = useState(false)
 
   const resetForm = () => {
+    setConfirmPassword('')
     setMessage('')
     setPassword('')
+    setResetCodeVerified(false)
+    setResetCooldown(0)
+    setResetCodeSent(false)
+    setResetToken('')
   }
 
   const switchMode = (next: AuthMode) => {
     setMode(next)
     resetForm()
+  }
+
+  const hasResetCooldown = resetCooldown > 0
+
+  useEffect(() => {
+    if (!hasResetCooldown) return
+    const timer = window.setInterval(() => {
+      setResetCooldown((current) => Math.max(0, current - 1))
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [hasResetCooldown])
+
+  const sendResetCode = async (successMessage: string) => {
+    if (resetCooldown > 0) return
+    await requestPasswordResetCode(email)
+    setResetCodeSent(true)
+    setResetCodeVerified(false)
+    setResetCooldown(60)
+    setMessageTone('success')
+    setMessage(successMessage)
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -43,9 +79,34 @@ export function AuthPanel() {
         setMessageTone('success')
         setMessage('注册成功。如果当前项目开启了邮箱确认，请先完成邮箱验证。')
       } else if (mode === 'reset') {
-        await sendPasswordReset(email)
-        setMessageTone('success')
-        setMessage('重置密码邮件已发送，请检查邮箱。')
+        if (!resetCodeSent) {
+          await sendResetCode('验证码已发送到你的注册邮箱。')
+        } else if (!resetCodeVerified) {
+          await verifyPasswordResetCode({
+            email,
+            token: resetToken,
+          })
+          setResetCodeVerified(true)
+          setMessageTone('success')
+          setMessage('验证码已通过，请设置新密码。')
+        } else {
+          if (password !== confirmPassword) {
+            setMessageTone('error')
+            setMessage('两次输入的密码不一致。')
+            return
+          }
+
+          await completePasswordReset(password)
+          setMode('signin')
+          setPassword('')
+          setConfirmPassword('')
+          setResetCodeVerified(false)
+          setResetCooldown(0)
+          setResetCodeSent(false)
+          setResetToken('')
+          setMessageTone('success')
+          setMessage('密码已更新，请使用新密码登录。')
+        }
       }
     } catch (err) {
       setMessageTone('error')
@@ -96,7 +157,48 @@ export function AuthPanel() {
                 type="email"
                 value={email}
               />
-              {!isReset ? (
+              {isReset && resetCodeSent ? (
+                <>
+                  <Input
+                    autoComplete="one-time-code"
+                    disabled={resetCodeVerified}
+                    icon={<KeyRound size={18} />}
+                    inputMode="numeric"
+                    label="验证码"
+                    maxLength={10}
+                    onChange={(event) => setResetToken(event.target.value)}
+                    placeholder="输入邮件中的验证码"
+                    required
+                    value={resetToken}
+                  />
+                  {resetCodeVerified ? (
+                    <>
+                      <Input
+                        autoComplete="new-password"
+                        icon={<Lock size={18} />}
+                        label="新密码"
+                        minLength={6}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="至少 6 位"
+                        required
+                        type="password"
+                        value={password}
+                      />
+                      <Input
+                        autoComplete="new-password"
+                        icon={<Lock size={18} />}
+                        label="确认新密码"
+                        minLength={6}
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                        placeholder="再次输入新密码"
+                        required
+                        type="password"
+                        value={confirmPassword}
+                      />
+                    </>
+                  ) : null}
+                </>
+              ) : !isReset ? (
                 <Input
                   autoComplete={isSignup ? 'new-password' : 'current-password'}
                   hint={isSignup ? '至少 6 位，建议使用不重复的密码。' : undefined}
@@ -115,13 +217,42 @@ export function AuthPanel() {
               {busy
                 ? '处理中...'
                 : isReset
-                  ? '发送重置邮件'
+                  ? resetCodeSent
+                    ? resetCodeVerified
+                      ? '更新密码'
+                      : '验证验证码'
+                    : '发送验证码'
                   : mode === 'signin'
                     ? '进入朋友圈'
                     : '创建账号'}
             </Button>
             {message ? <Notice tone={messageTone}>{message}</Notice> : null}
           </form>
+
+          {isReset && resetCodeSent && !resetCodeVerified ? (
+            <div className="mt-4 text-sm">
+              <button
+                className="text-[var(--color-primary)] transition hover:text-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:text-[var(--color-muted)]"
+                disabled={busy || resetCooldown > 0}
+                onClick={async () => {
+                  if (resetCooldown > 0) return
+                  setBusy(true)
+                  setMessage('')
+                  try {
+                    await sendResetCode('新的验证码已发送，请检查邮箱。')
+                  } catch (err) {
+                    setMessageTone('error')
+                    setMessage(getErrorMessage(err))
+                  } finally {
+                    setBusy(false)
+                  }
+                }}
+                type="button"
+              >
+                {resetCooldown > 0 ? `${resetCooldown} 秒后重新发送` : '重新发送验证码'}
+              </button>
+            </div>
+          ) : null}
 
           {mode === 'signin' ? (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">

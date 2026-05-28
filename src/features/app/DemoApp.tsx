@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, Suspense, lazy } from 'react'
 import { Notice } from '../../components/ui/Notice'
 import { demoCircle, demoMembers, demoPosts } from '../../data/demo'
-import { ComposeDialog } from '../composer/ComposeDialog'
 import { Feed } from '../feed/Feed'
 import { AppShell } from '../shell/AppShell'
 import type { PanelKey } from '../shell/AppShell'
@@ -10,16 +9,38 @@ import { Camera } from 'lucide-react'
 import { SafeImage } from '../../components/ui/SafeImage'
 import { Avatar } from '../../components/ui/Avatar'
 import { formatRelativeTime } from '../../utils/time'
+import { DialogFallback } from '../../components/ui/DialogFallback'
 
+const CircleSettingsPanel = lazy(() =>
+  import('../settings/CircleSettingsPanel').then((m) => ({ default: m.CircleSettingsPanel })),
+)
+const ComposeDialog = lazy(() =>
+  import('../composer/ComposeDialog').then((m) => ({ default: m.ComposeDialog })),
+)
 const LightboxDialog = lazy(() =>
   import('../album/LightboxDialog').then((m) => ({ default: m.LightboxDialog })),
+)
+const MembersDialog = lazy(() =>
+  import('../settings/MembersDialog').then((m) => ({ default: m.MembersDialog })),
+)
+const ProfileSettingsPanel = lazy(() =>
+  import('../settings/ProfileSettingsPanel').then((m) => ({ default: m.ProfileSettingsPanel })),
+)
+const SettingsDialog = lazy(() =>
+  import('../settings/SettingsDialog').then((m) => ({ default: m.SettingsDialog })),
+)
+const SettingsView = lazy(() =>
+  import('../settings/SettingsView').then((m) => ({ default: m.SettingsView })),
 )
 
 export function DemoApp() {
   const [posts, setPosts] = useState(demoPosts)
   const [activePanel, setActivePanel] = useState<PanelKey>('feed')
-  const [mainPanel, setMainPanel] = useState<'feed' | 'album'>('feed')
+  const [mainPanel, setMainPanel] = useState<'feed' | 'album' | 'settings'>('feed')
   const [composeOpen, setComposeOpen] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<'profile' | 'circle'>('profile')
   const demoImageUrlsRef = useRef<string[]>([])
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -180,11 +201,20 @@ export function DemoApp() {
       members={demoMembers}
       onActivePanelChange={(panel) => {
         setActivePanel(panel)
-        if (panel === 'feed' || panel === 'album') {
+        if (panel === 'feed' || panel === 'album' || panel === 'settings') {
           setMainPanel(panel)
         }
       }}
       onCompose={() => setComposeOpen(true)}
+      onOpenMembers={() => setMembersOpen(true)}
+      onOpenProfile={() => {
+        setSettingsTab('profile')
+        setSettingsOpen(true)
+      }}
+      onOpenSettings={() => {
+        setSettingsTab('circle')
+        setSettingsOpen(true)
+      }}
       profile={demoProfile}
       user={null}
     >
@@ -209,7 +239,7 @@ export function DemoApp() {
             />
           </div>
         </>
-      ) : (
+      ) : mainPanel === 'album' ? (
         <DemoAlbumView
           images={demoAlbumImages}
           onOpenLightbox={(index) => {
@@ -217,31 +247,141 @@ export function DemoApp() {
             setLightboxOpen(true)
           }}
         />
+      ) : (
+        <Suspense fallback={<DialogFallback />}>
+          <SettingsView
+            activeTab={settingsTab}
+            circlePanel={
+              <CircleSettingsPanel
+                circle={demoCircle}
+                currentUserId={demoProfile.id}
+                invites={[]}
+                isDemo
+                members={demoMembers}
+                onCreateInvite={async () => {
+                  throw new Error('演示模式不支持邀请功能。')
+                }}
+                onLeaveCircle={async () => {
+                  throw new Error('演示模式不支持退出圈子。')
+                }}
+                onRemoveMember={async () => {
+                  throw new Error('演示模式不支持移除成员。')
+                }}
+                onRevokeInvite={async () => {
+                  throw new Error('演示模式不支持撤销邀请。')
+                }}
+                onSaveCircle={async () => {
+                  throw new Error('演示模式不支持修改圈子。')
+                }}
+                onTransferOwnership={async () => {
+                  throw new Error('演示模式不支持转让圈主。')
+                }}
+              />
+            }
+            onTabChange={(tab) => setSettingsTab(tab)}
+            profilePanel={
+              <ProfileSettingsPanel
+                isDemo
+                onAvatar={async () => {
+                  throw new Error('演示模式不支持更换头像。')
+                }}
+                onSave={async () => {
+                  throw new Error('演示模式不支持修改资料。')
+                }}
+                profile={demoProfile}
+              />
+            }
+          />
+        </Suspense>
       )}
-      <ComposeDialog
-        circle={demoCircle}
-        demoName="你"
-        onClose={() => setComposeOpen(false)}
-        onSubmit={(body, files) => {
-          addDemoPost(body, files)
-          setComposeOpen(false)
-          setActivePanel('feed')
-          setMainPanel('feed')
-        }}
-        open={composeOpen}
-        profile={demoProfile}
-        user={null}
-      />
-      <Suspense fallback={null}>
-        <LightboxDialog
-          images={demoAlbumImages}
-          index={lightboxIndex}
-          onClose={() => setLightboxOpen(false)}
-          onNext={() => setLightboxIndex((p) => Math.min(demoAlbumImages.length - 1, p + 1))}
-          onPrev={() => setLightboxIndex((p) => Math.max(0, p - 1))}
-          open={lightboxOpen}
-        />
-      </Suspense>
+      {composeOpen ? (
+        <Suspense fallback={<DialogFallback />}>
+          <ComposeDialog
+            circle={demoCircle}
+            demoName="你"
+            onClose={() => setComposeOpen(false)}
+            onSubmit={(body, files) => {
+              addDemoPost(body, files)
+              setComposeOpen(false)
+              setActivePanel('feed')
+              setMainPanel('feed')
+            }}
+            open={composeOpen}
+            profile={demoProfile}
+            user={null}
+          />
+        </Suspense>
+      ) : null}
+      {lightboxOpen ? (
+        <Suspense fallback={null}>
+          <LightboxDialog
+            images={demoAlbumImages}
+            index={lightboxIndex}
+            onClose={() => setLightboxOpen(false)}
+            onNext={() => setLightboxIndex((p) => Math.min(demoAlbumImages.length - 1, p + 1))}
+            onPrev={() => setLightboxIndex((p) => Math.max(0, p - 1))}
+            open={lightboxOpen}
+          />
+        </Suspense>
+      ) : null}
+      {membersOpen ? (
+        <Suspense fallback={<DialogFallback />}>
+          <MembersDialog
+            members={demoMembers}
+            onClose={() => setMembersOpen(false)}
+            open={membersOpen}
+          />
+        </Suspense>
+      ) : null}
+      {settingsOpen ? (
+        <Suspense fallback={<DialogFallback />}>
+          <SettingsDialog
+            circlePanel={
+              <CircleSettingsPanel
+                circle={demoCircle}
+                currentUserId={demoProfile.id}
+                invites={[]}
+                isDemo
+                members={demoMembers}
+                onCreateInvite={async () => {
+                  throw new Error('演示模式不支持邀请功能。')
+                }}
+                onLeaveCircle={async () => {
+                  throw new Error('演示模式不支持退出圈子。')
+                }}
+                onRemoveMember={async () => {
+                  throw new Error('演示模式不支持移除成员。')
+                }}
+                onRevokeInvite={async () => {
+                  throw new Error('演示模式不支持撤销邀请。')
+                }}
+                onSaveCircle={async () => {
+                  throw new Error('演示模式不支持修改圈子。')
+                }}
+                onTransferOwnership={async () => {
+                  throw new Error('演示模式不支持转让圈主。')
+                }}
+              />
+            }
+            activeTab={settingsTab}
+            onClose={() => setSettingsOpen(false)}
+            onTabChange={(tab) => setSettingsTab(tab)}
+            open={settingsOpen}
+            profilePanel={
+              <ProfileSettingsPanel
+                isDemo
+                onAvatar={async () => {
+                  throw new Error('演示模式不支持更换头像。')
+                }}
+                onSave={async () => {
+                  throw new Error('演示模式不支持修改资料。')
+                }}
+                profile={demoProfile}
+              />
+            }
+          />
+        </Suspense>
+      ) : null}
     </AppShell>
   )
 }
