@@ -10,6 +10,9 @@ import { SafeImage } from '../../components/ui/SafeImage'
 import { Avatar } from '../../components/ui/Avatar'
 import { formatRelativeTime } from '../../utils/time'
 import { DialogFallback } from '../../components/ui/DialogFallback'
+import { TimelineNavigator } from '../timeline/TimelineNavigator'
+import { groupItemsByTimeline } from '../timeline/timelineGroups'
+import type { TimelineSection } from '../timeline/timelineGroups'
 
 const CircleSettingsPanel = lazy(() =>
   import('../settings/CircleSettingsPanel').then((m) => ({ default: m.CircleSettingsPanel })),
@@ -79,6 +82,31 @@ export function DemoApp() {
         new Date(b.postCreatedAt).getTime() - new Date(a.postCreatedAt).getTime(),
     )
   }, [posts])
+
+  const feedTimelineSections = useMemo(
+    () =>
+      groupItemsByTimeline(
+        posts.filter((post) => !post.pinnedAt),
+        (post) => post.createdAt,
+        { idPrefix: 'feed' },
+      ).sections,
+    [posts],
+  )
+
+  const albumTimelineSections = useMemo(
+    () =>
+      groupItemsByTimeline(demoAlbumImages, (image) => image.postCreatedAt, {
+        idPrefix: 'album',
+      }).sections,
+    [demoAlbumImages],
+  )
+
+  const visibleTimelineSections =
+    mainPanel === 'album'
+      ? albumTimelineSections
+      : mainPanel === 'feed'
+        ? feedTimelineSections
+        : []
 
   const addDemoPost = (body: string, files: File[]) => {
     const postId = crypto.randomUUID()
@@ -199,6 +227,14 @@ export function DemoApp() {
       circle={demoCircle}
       isDemo
       members={demoMembers}
+      mobileTopTools={visibleTimelineSections.length > 0 ? (
+        <TimelineNavigator
+          sections={visibleTimelineSections}
+          sticky={false}
+          title={mainPanel === 'album' ? '相册时间' : '动态时间'}
+          variant="mobile"
+        />
+      ) : null}
       onActivePanelChange={(panel) => {
         setActivePanel(panel)
         if (panel === 'feed' || panel === 'album' || panel === 'settings') {
@@ -216,6 +252,12 @@ export function DemoApp() {
         setSettingsOpen(true)
       }}
       profile={demoProfile}
+      rightRailTools={
+        <TimelineNavigator
+          sections={visibleTimelineSections}
+          title={mainPanel === 'album' ? '相册时间' : '动态时间'}
+        />
+      }
       user={null}
     >
       {mainPanel === 'feed' ? (
@@ -242,6 +284,7 @@ export function DemoApp() {
       ) : mainPanel === 'album' ? (
         <DemoAlbumView
           images={demoAlbumImages}
+          sections={albumTimelineSections}
           onOpenLightbox={(index) => {
             setLightboxIndex(index)
             setLightboxOpen(true)
@@ -389,9 +432,11 @@ export function DemoApp() {
 function DemoAlbumView({
   images,
   onOpenLightbox,
+  sections,
 }: {
   images: AlbumImage[]
   onOpenLightbox: (index: number) => void
+  sections: TimelineSection[]
 }) {
   if (images.length === 0) {
     return (
@@ -406,7 +451,14 @@ function DemoAlbumView({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3">
+    <div className="space-y-4">
+      {sections[0] ? (
+        <DemoAlbumHeading count={images.length} label={sections[0].label} />
+      ) : null}
+      <div
+        className="scroll-mt-24 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3"
+        id={sections[0]?.id}
+      >
       {images.map((image, index) => (
         <button
           className="focus-ring group relative overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-surface)] text-left"
@@ -443,6 +495,19 @@ function DemoAlbumView({
           </div>
         </button>
       ))}
+      </div>
+    </div>
+  )
+}
+
+function DemoAlbumHeading({ count, label }: { count: number; label: string }) {
+  return (
+    <div className="flex items-end justify-between gap-3">
+      <div>
+        <h2 className="text-base font-semibold text-[var(--color-text)]">{label}</h2>
+        <p className="mt-1 text-xs text-[var(--color-muted)]">{count} 张照片</p>
+      </div>
+      <div className="h-px flex-1 bg-[var(--color-border)]" />
     </div>
   )
 }

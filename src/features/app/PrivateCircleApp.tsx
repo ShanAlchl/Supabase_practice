@@ -1,4 +1,4 @@
-import { useState, Suspense, lazy, useRef } from 'react'
+import { useMemo, useState, Suspense, lazy } from 'react'
 import { getErrorMessage } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
 import { useAlbumState } from '../album/useAlbumState'
@@ -7,9 +7,11 @@ import { usePostLocator } from '../feed/usePostLocator'
 import { Feed } from '../feed/Feed'
 import { useRealtimeFeed } from '../feed/useRealtimeFeed'
 import { AppShell } from '../shell/AppShell'
-import { CalendarDays } from 'lucide-react'
+import { TimelineNavigator } from '../timeline/TimelineNavigator'
+import { groupItemsByTimeline } from '../timeline/timelineGroups'
 import type { PanelKey } from '../shell/AppShell'
 import type { SessionUser } from '../../types/domain'
+import type { TimelineSection } from '../timeline/timelineGroups'
 import { DialogFallback } from '../../components/ui/DialogFallback'
 import { LoadingScreen } from './LoadingScreen'
 import { SetupError } from './SetupError'
@@ -48,7 +50,7 @@ export function PrivateCircleApp({ user }: { user: SessionUser }) {
   const [activePanel, setActivePanel] = useState<PanelKey>('feed')
   const [mainPanel, setMainPanel] = useState<'feed' | 'album' | 'settings'>('feed')
   const [composeOpen, setComposeOpen] = useState(false)
-  const [targetDate, setTargetDate] = useState('')
+  const [albumTimelineSections, setAlbumTimelineSections] = useState<TimelineSection[]>([])
   const dialogs = usePrivateCircleDialogs()
   const album = useAlbumState()
   const queries = usePrivateCircleQueries({
@@ -62,6 +64,23 @@ export function PrivateCircleApp({ user }: { user: SessionUser }) {
   })
 
   useRealtimeFeed(queries.circleId)
+
+  const feedTimelineSections = useMemo(
+    () =>
+      groupItemsByTimeline(
+        queries.posts.filter((post) => !post.pinnedAt),
+        (post) => post.createdAt,
+        { idPrefix: 'feed' },
+      ).sections,
+    [queries.posts],
+  )
+
+  const visibleTimelineSections =
+    mainPanel === 'album'
+      ? albumTimelineSections
+      : mainPanel === 'feed'
+        ? feedTimelineSections
+        : []
 
   const mutations = usePrivateCircleMutations({
     circleId: queries.circleId,
@@ -106,6 +125,14 @@ export function PrivateCircleApp({ user }: { user: SessionUser }) {
       circle={queries.circle}
       isDemo={false}
       members={members}
+      mobileTopTools={visibleTimelineSections.length > 0 ? (
+        <TimelineNavigator
+          sections={visibleTimelineSections}
+          sticky={false}
+          title={mainPanel === 'album' ? '相册时间' : '动态时间'}
+          variant="mobile"
+        />
+      ) : null}
       notificationCount={queries.unreadCount}
       onActivePanelChange={(panel) => {
         setActivePanel(panel)
@@ -126,66 +153,39 @@ export function PrivateCircleApp({ user }: { user: SessionUser }) {
       }}
       profile={profile}
       rightRailTools={
-        <CircleSwitcher
-          activeCircleId={queries.circle.id}
-          busy={mutations.createCircleMutation.isPending}
-          circles={queries.circles}
-          joinBusy={mutations.joinCircleMutation.isPending}
-          joinError={
-            mutations.joinCircleMutation.error
-              ? getErrorMessage(mutations.joinCircleMutation.error)
-              : null
-          }
-          onCreate={async (input) => {
-            await mutations.createCircleMutation.mutateAsync(input)
-          }}
-          onJoin={async (code) => {
-            await mutations.joinCircleMutation.mutateAsync(code)
-          }}
-          onSelect={(nextCircleId) => {
-            setSelectedCircleId(nextCircleId)
-            setActivePanel('feed')
-          }}
-        />
+        <>
+          <CircleSwitcher
+            activeCircleId={queries.circle.id}
+            busy={mutations.createCircleMutation.isPending}
+            circles={queries.circles}
+            joinBusy={mutations.joinCircleMutation.isPending}
+            joinError={
+              mutations.joinCircleMutation.error
+                ? getErrorMessage(mutations.joinCircleMutation.error)
+                : null
+            }
+            onCreate={async (input) => {
+              await mutations.createCircleMutation.mutateAsync(input)
+            }}
+            onJoin={async (code) => {
+              await mutations.joinCircleMutation.mutateAsync(code)
+            }}
+            onSelect={(nextCircleId) => {
+              setSelectedCircleId(nextCircleId)
+              setActivePanel('feed')
+              setMainPanel('feed')
+            }}
+          />
+          <TimelineNavigator
+            sections={visibleTimelineSections}
+            title={mainPanel === 'album' ? '相册时间' : '动态时间'}
+          />
+        </>
       }
       user={user}
     >
       {mainPanel === 'feed' ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <DateLocator
-              disabled={queries.postsQuery.isLoading || queries.posts.length === 0}
-              onSelect={(dateStr) => {
-                setTargetDate(dateStr)
-                if (!dateStr) return
-                const target = new Date(dateStr)
-                let closest: typeof queries.posts[number] | null = null
-                let minDiff = Infinity
-                for (const post of queries.posts) {
-                  const postDate = new Date(post.createdAt)
-                  const diff = Math.abs(postDate.getTime() - target.getTime())
-                  if (diff < minDiff) {
-                    minDiff = diff
-                    closest = post
-                  }
-                }
-                if (closest) {
-                  locator.scrollToPost(closest.id)
-                  locator.highlight(closest.id)
-                }
-              }}
-              value={targetDate}
-            />
-            {targetDate ? (
-              <button
-                className="focus-ring text-sm font-medium text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-                onClick={() => setTargetDate('')}
-                type="button"
-              >
-                清除
-              </button>
-            ) : null}
-          </div>
           {queries.postsQuery.error ? (
             <SetupError detail={getErrorMessage(queries.postsQuery.error)} compact />
           ) : null}
@@ -219,6 +219,7 @@ export function PrivateCircleApp({ user }: { user: SessionUser }) {
           <AlbumView
             circleId={queries.circle.id}
             onOpenLightbox={album.openLightbox}
+            onTimelineSectionsChange={setAlbumTimelineSections}
           />
         </Suspense>
       ) : (
@@ -498,37 +499,5 @@ export function PrivateCircleApp({ user }: { user: SessionUser }) {
         </Suspense>
       ) : null}
     </AppShell>
-  )
-}
-
-function DateLocator({
-  disabled,
-  onSelect,
-  value,
-}: {
-  disabled?: boolean
-  onSelect: (dateStr: string) => void
-  value: string
-}) {
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  return (
-    <button
-      className="focus-ring relative flex h-10 items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 text-sm font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-surface)] disabled:opacity-50"
-      disabled={disabled}
-      onClick={() => inputRef.current?.showPicker?.() || inputRef.current?.click()}
-      type="button"
-    >
-      <CalendarDays size={16} className="text-[var(--color-muted)]" />
-      {value ? value : '定位到日期'}
-      <input
-        className="sr-only"
-        max={new Date().toISOString().split('T')[0]}
-        onChange={(e) => onSelect(e.target.value)}
-        ref={inputRef}
-        type="date"
-        value={value}
-      />
-    </button>
   )
 }

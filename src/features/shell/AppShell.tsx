@@ -41,6 +41,7 @@ type AppShellProps = {
   onOpenProfile?: () => void
   onOpenMembers?: () => void
   notificationCount?: number
+  mobileTopTools?: ReactNode
   rightRailTools?: ReactNode
   children: ReactNode
 }
@@ -72,6 +73,7 @@ export function AppShell({
   onOpenProfile,
   onOpenMembers,
   notificationCount = 0,
+  mobileTopTools,
   rightRailTools,
   children,
 }: AppShellProps) {
@@ -102,14 +104,21 @@ export function AppShell({
 
   return (
     <div className="min-h-svh bg-[var(--color-page)] text-[var(--color-text)] lg:h-screen lg:overflow-hidden">
-      <MobileHeader
-        circleName={circle.name}
-        notificationCount={notificationCount}
-        onOpenMembers={onOpenMembers}
-        onOpenNotifications={onOpenNotifications}
-      />
+      <div className="fixed inset-x-0 top-0 z-30 lg:hidden">
+        <MobileHeader
+          circleName={circle.name}
+          notificationCount={notificationCount}
+          onOpenMembers={onOpenMembers}
+          onOpenNotifications={onOpenNotifications}
+        />
+        {mobileTopTools}
+      </div>
 
-      <div className="mx-auto grid max-w-[1440px] gap-5 px-4 py-4 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-6 lg:py-6 xl:grid-cols-[280px_minmax(0,680px)_360px] lg:h-[calc(100vh-3rem)]">
+      <div
+        className={`mx-auto grid max-w-[1440px] gap-5 px-4 pb-4 ${
+          mobileTopTools ? 'pt-32' : 'pt-20'
+        } sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-6 lg:py-6 xl:grid-cols-[280px_minmax(0,680px)_360px] lg:h-[calc(100vh-3rem)]`}
+      >
         <LeftRail
           activePanel={activePanel}
           circle={circle}
@@ -159,7 +168,7 @@ function MobileHeader({
   onOpenMembers?: () => void
 }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-page)]/80 px-5 py-3.5 backdrop-blur-xl lg:hidden">
+    <header className="border-b border-[var(--color-border)] bg-[var(--color-page)]/80 px-5 py-3.5 backdrop-blur-xl">
       <div className="mx-auto flex max-w-2xl items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-primary)] text-white">

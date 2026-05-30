@@ -4,6 +4,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Card } from '../../components/ui/Card'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { Button } from '../../components/ui/Button'
+import { groupItemsByTimeline } from '../timeline/timelineGroups'
 import { PostCard } from './PostCard'
 
 type FeedProps = {
@@ -58,36 +59,65 @@ export function Feed({
     return <EmptyState onCompose={onCompose} />
   }
 
+  const pinnedPosts = posts.filter((post) => post.pinnedAt)
+  const regularPosts = posts.filter((post) => !post.pinnedAt)
+  const timeline = groupItemsByTimeline(regularPosts, (post) => post.createdAt, {
+    idPrefix: 'feed',
+  })
+
+  const renderPost = (post: Post, index: number) => (
+    <div
+      key={post.id}
+      className="animate-fade-in-up"
+      id={`post-${post.id}`}
+      style={{ animationDelay: `${Math.min(index * 60, 300)}ms` }}
+    >
+      <PostCard
+        viewerId={viewerId}
+        highlighted={post.id === highlightedPostId}
+        highlightedCommentId={
+          post.id === highlightedPostId ? highlightedCommentId : null
+        }
+        onAddComment={onAddComment}
+        canDelete={Boolean(viewerId && post.authorId === viewerId)}
+        onDelete={onDeletePost}
+        onLoadComments={onLoadComments}
+        onToggleReaction={onToggleReaction}
+        canPin={canPin}
+        onTogglePin={onTogglePin}
+        onUpdatePost={onUpdatePost}
+        onUpdateComment={onUpdateComment}
+        onDeleteComment={onDeleteComment}
+        post={post}
+      />
+    </div>
+  )
+
   return (
     <div className="space-y-5">
       <div className="space-y-5">
-        {posts.map((post, index) => (
-          <div
-            key={post.id}
-            className="animate-fade-in-up"
-            id={`post-${post.id}`}
-            style={{ animationDelay: `${Math.min(index * 60, 300)}ms` }}
+        {pinnedPosts.length > 0 ? (
+          <section className="space-y-3">
+            <TimelineHeading count={pinnedPosts.length} label="置顶动态" />
+            <div className="space-y-5">
+              {pinnedPosts.map((post, index) => renderPost(post, index))}
+            </div>
+          </section>
+        ) : null}
+
+        {timeline.groups.map((group, groupIndex) => (
+          <section
+            className="scroll-mt-24 space-y-3"
+            id={group.section.id}
+            key={group.section.id}
           >
-            <PostCard
-              key={post.id}
-              viewerId={viewerId}
-              highlighted={post.id === highlightedPostId}
-              highlightedCommentId={
-                post.id === highlightedPostId ? highlightedCommentId : null
-              }
-              onAddComment={onAddComment}
-              canDelete={Boolean(viewerId && post.authorId === viewerId)}
-              onDelete={onDeletePost}
-              onLoadComments={onLoadComments}
-              onToggleReaction={onToggleReaction}
-              canPin={canPin}
-              onTogglePin={onTogglePin}
-              onUpdatePost={onUpdatePost}
-              onUpdateComment={onUpdateComment}
-              onDeleteComment={onDeleteComment}
-              post={post}
-            />
-          </div>
+            <TimelineHeading count={group.section.count} label={group.section.label} />
+            <div className="space-y-5">
+              {group.items.map((post, index) =>
+                renderPost(post, pinnedPosts.length + groupIndex + index),
+              )}
+            </div>
+          </section>
         ))}
       </div>
       {hasMore && onLoadMore ? (
@@ -97,6 +127,18 @@ export function Feed({
           </Button>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+function TimelineHeading({ count, label }: { count: number; label: string }) {
+  return (
+    <div className="flex items-center gap-3 px-1">
+      <div className="h-px flex-1 bg-[var(--color-border)]" />
+      <p className="shrink-0 text-xs font-semibold text-[var(--color-muted)]">
+        {label} · {count} 条
+      </p>
+      <div className="h-px flex-1 bg-[var(--color-border)]" />
     </div>
   )
 }

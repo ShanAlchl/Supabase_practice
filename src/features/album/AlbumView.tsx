@@ -1,4 +1,5 @@
 import { Camera } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { queryKeys } from '../../lib/queryKeys'
 import { fetchAlbumImages } from '../../services/albumService'
@@ -6,14 +7,21 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { SafeImage } from '../../components/ui/SafeImage'
 import { formatRelativeTime } from '../../utils/time'
 import { Avatar } from '../../components/ui/Avatar'
+import { groupItemsByTimeline } from '../timeline/timelineGroups'
+import type { TimelineSection } from '../timeline/timelineGroups'
 import type { AlbumImage } from '../../types/domain'
 
 type AlbumViewProps = {
   circleId: string
   onOpenLightbox: (index: number, images: AlbumImage[]) => void
+  onTimelineSectionsChange?: (sections: TimelineSection[]) => void
 }
 
-export function AlbumView({ circleId, onOpenLightbox }: AlbumViewProps) {
+export function AlbumView({
+  circleId,
+  onOpenLightbox,
+  onTimelineSectionsChange,
+}: AlbumViewProps) {
   const query = useInfiniteQuery({
     queryKey: queryKeys.album(circleId),
     queryFn: async ({ pageParam }) =>
@@ -23,7 +31,26 @@ export function AlbumView({ circleId, onOpenLightbox }: AlbumViewProps) {
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   })
 
-  const images = query.data?.pages.flatMap((page) => page.items) ?? []
+  const images = useMemo(
+    () => query.data?.pages.flatMap((page) => page.items) ?? [],
+    [query.data],
+  )
+  const indexedImages = useMemo(
+    () => images.map((image, index) => ({ image, index })),
+    [images],
+  )
+  const timeline = useMemo(
+    () =>
+      groupItemsByTimeline(indexedImages, (item) => item.image.postCreatedAt, {
+        idPrefix: 'album',
+      }),
+    [indexedImages],
+  )
+
+  useEffect(() => {
+    onTimelineSectionsChange?.(timeline.sections)
+    return () => onTimelineSectionsChange?.([])
+  }, [onTimelineSectionsChange, timeline.sections])
 
   if (query.isLoading) {
     return <AlbumSkeleton />
@@ -43,14 +70,25 @@ export function AlbumView({ circleId, onOpenLightbox }: AlbumViewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3">
-        {images.map((image, index) => (
-          <AlbumTile
-            key={image.id}
-            image={image}
-            index={index}
-            onClick={() => onOpenLightbox(index, images)}
-          />
+      <div className="space-y-5">
+        {timeline.groups.map((group) => (
+          <section
+            className="scroll-mt-24 space-y-3"
+            id={group.section.id}
+            key={group.section.id}
+          >
+            <AlbumHeading count={group.section.count} label={group.section.label} />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3">
+              {group.items.map(({ image, index }) => (
+                <AlbumTile
+                  key={image.id}
+                  image={image}
+                  index={index}
+                  onClick={() => onOpenLightbox(index, images)}
+                />
+              ))}
+            </div>
+          </section>
         ))}
       </div>
 
@@ -66,6 +104,18 @@ export function AlbumView({ circleId, onOpenLightbox }: AlbumViewProps) {
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+function AlbumHeading({ count, label }: { count: number; label: string }) {
+  return (
+    <div className="flex items-end justify-between gap-3">
+      <div>
+        <h2 className="text-base font-semibold text-[var(--color-text)]">{label}</h2>
+        <p className="mt-1 text-xs text-[var(--color-muted)]">{count} 张照片</p>
+      </div>
+      <div className="h-px flex-1 bg-[var(--color-border)]" />
     </div>
   )
 }
